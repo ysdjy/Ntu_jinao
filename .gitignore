@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual env
+.venv/
+venv/
+env/
+conda_env/
+
+# IDE
+.vscode/
+.idea/
+
+# Isaac / Omniverse / simulation cache
+.kit/
+.cache/
+ov/
+isaac-sim/
+_build/
+build/
+dist/
+logs/
+log/
+*.log
+
+# Datasets and generated outputs
+datasets/
+outputs/
+runs/
+wandb/
+trajectories/
+*.jsonl
+
+# Small curated examples (optional exception)
+!small_examples/
+!small_examples/*.jsonl
+
+# Model checkpoints
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine
+
+# Videos / images / binary outputs
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.png
+*.jpg
+*.jpeg
+*.npy
+*.npz
+*.hdf5
+*.h5
+
+# System
+.DS_Store
+Thumbs.db
+
+# Keep placeholder for local dataset output dir
+!source/standalone/franka_state_machine_cerebellum/datasets/
+!source/standalone/franka_state_machine_cerebellum/datasets/.gitkeep
+
+# Do NOT commit Isaac Lab upstream or local staging artifacts
+isaaclab/
+IsaacLab/
