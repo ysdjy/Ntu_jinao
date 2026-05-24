@@ -70,6 +70,12 @@ Thumbs.db
 # Keep placeholder for local dataset output dir
 !source/standalone/franka_state_machine_cerebellum/datasets/
 !source/standalone/franka_state_machine_cerebellum/datasets/.gitkeep
+!skill_performance_predictor/data/
+skill_performance_predictor/data/*
+!skill_performance_predictor/data/.gitkeep
+!skill_performance_predictor/outputs/
+skill_performance_predictor/outputs/*
+!skill_performance_predictor/outputs/.gitkeep
 
 # Do NOT commit Isaac Lab upstream or local staging artifacts
 isaaclab/
