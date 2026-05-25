@@ -15,7 +15,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from dataset import SkillPerformanceDataset
-from dataset_schema import NUMERIC_FEATURE_NAMES, REGRESSION_TARGET_NAMES
+from dataset_schema import NUMERIC_FEATURE_NAMES, PREDICTOR_SCHEMA_VERSION, REGRESSION_TARGET_NAMES
 from model import MultiTaskSkillPerformancePredictor
 
 SMALL_DATASET_WARNING = "Dataset is too small for reliable training; this run is for pipeline validation only."
@@ -220,6 +220,7 @@ def _checkpoint(model: nn.Module, config: dict[str, Any], vocab: dict[str, Any],
     return {
         "model_state_dict": model.state_dict(),
         "config": config,
+        "predictor_schema_version": PREDICTOR_SCHEMA_VERSION,
         "vocab": vocab,
         "feature_stats": feature_stats,
         "label_stats": label_stats,

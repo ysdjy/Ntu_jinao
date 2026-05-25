@@ -49,6 +49,9 @@ trajectories/
 *.ckpt
 *.onnx
 *.engine
+*.safetensors
+*.bin
+*.gguf
 
 # Videos / images / binary outputs
 *.mp4
@@ -76,6 +79,12 @@ skill_performance_predictor/data/*
 !skill_performance_predictor/outputs/
 skill_performance_predictor/outputs/*
 !skill_performance_predictor/outputs/.gitkeep
+!vlm_brain/data/
+vlm_brain/data/*
+!vlm_brain/data/.gitkeep
+!vlm_brain/outputs/
+vlm_brain/outputs/*
+!vlm_brain/outputs/.gitkeep
 
 # Do NOT commit Isaac Lab upstream or local staging artifacts
 isaaclab/

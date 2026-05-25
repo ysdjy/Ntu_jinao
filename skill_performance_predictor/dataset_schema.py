@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+PREDICTOR_SCHEMA_VERSION = "predictor_v1"
+
 SUPPORTED_SKILLS = [
     "move_above",
     "reach",
@@ -103,8 +105,24 @@ REGRESSION_TARGET_NAMES = [
     "execution_steps",
     "execution_time",
     "trajectory_length",
+    "final_ee_x",
+    "final_ee_y",
+    "final_ee_z",
+    "target_x",
+    "target_y",
+    "target_z",
     "final_ee_position_error",
+    "final_ee_roll",
+    "final_ee_pitch",
+    "final_ee_yaw",
     "final_ee_orientation_error",
+    "final_ee_linear_speed",
+    "average_ee_linear_speed",
+    "final_object_x",
+    "final_object_y",
+    "final_object_z",
+    "object_target_position_error",
+    "object_target_xy_error",
     "object_lift_delta",
     "ee_object_distance",
     "min_ee_object_distance",

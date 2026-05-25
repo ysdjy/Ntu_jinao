@@ -1,6 +1,6 @@
 {
-  "blueprint_id": "bp_pick_place_parallel_000001",
-  "task": "pick cube and place cube on sampled tabletop target with parallel position/orientation goals",
+  "blueprint_id": "sample_pick_place_parallel",
+  "task": "pick the cube and place it on the sampled tabletop target",
   "execution_graph": {
     "start": "p1",
     "logic": "parallel",
@@ -30,10 +30,7 @@
             }
           }
         },
-        "params": {
-          "timeout_steps": 400,
-          "gripper": "keep"
-        },
+        "params": {"timeout_steps": 400, "gripper": "keep"},
         "performance_query": [
           "success",
           "execution_steps",
@@ -101,19 +98,8 @@
           "timeout",
           "failure_reason"
         ],
-        "next": "c1",
+        "next": "s4",
         "on_failure": "t_failure"
-      },
-      "c1": {
-        "type": "condition",
-        "condition": {
-          "name": "object_in_gripper",
-          "object": "cube",
-          "min_lift_delta": 0.03,
-          "max_ee_object_distance": 0.08
-        },
-        "if_true": "s4",
-        "if_false": "t_failure_grasp"
       },
       "s4": {
         "type": "skill",
@@ -164,10 +150,7 @@
             }
           }
         },
-        "params": {
-          "timeout_steps": 350,
-          "gripper": "close"
-        },
+        "params": {"timeout_steps": 350, "gripper": "close"},
         "performance_query": [
           "success",
           "execution_steps",
@@ -205,13 +188,11 @@
           "execution_steps",
           "execution_time",
           "trajectory_length",
-          "final_ee_position_error",
           "final_ee_position",
           "final_object_position",
           "target_position",
           "object_target_position_error",
           "object_target_xy_error",
-          "object_target_xy_distance",
           "final_position_error",
           "object_displacement",
           "final_ee_linear_speed",
@@ -221,20 +202,8 @@
           "timeout",
           "failure_reason"
         ],
-        "next": "c2",
+        "next": "s7",
         "on_failure": "t_failure"
-      },
-      "c2": {
-        "type": "condition",
-        "condition": {
-          "name": "object_near_target",
-          "object": "cube",
-          "target": "target",
-          "max_xy_error": 0.05,
-          "max_z_error": 0.08
-        },
-        "if_true": "s7",
-        "if_false": "t_failure_place"
       },
       "s7": {
         "type": "skill",
@@ -258,25 +227,8 @@
         "next": "t_success",
         "on_failure": "t_failure"
       },
-      "t_success": {
-        "type": "terminal",
-        "result": "success"
-      },
-      "t_failure": {
-        "type": "terminal",
-        "result": "failure",
-        "failure_reason": "skill_failed"
-      },
-      "t_failure_grasp": {
-        "type": "terminal",
-        "result": "failure",
-        "failure_reason": "object_not_in_gripper"
-      },
-      "t_failure_place": {
-        "type": "terminal",
-        "result": "failure",
-        "failure_reason": "object_not_near_target"
-      }
+      "t_success": {"type": "terminal", "result": "success"},
+      "t_failure": {"type": "terminal", "result": "failure", "failure_reason": "skill_failed"}
     }
   }
 }

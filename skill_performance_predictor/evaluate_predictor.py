@@ -78,7 +78,9 @@ def evaluate(model: MultiTaskSkillPerformancePredictor, loader: DataLoader, chec
 
     overall_mask = float(totals["reg_mask"].sum().item())
     report: dict[str, Any] = {
+        "predictor_schema_version": checkpoint.get("predictor_schema_version", "predictor_v0"),
         "sample_count": totals["sample_count"],
+        "regression_target_count": len(regression_names),
         "success_accuracy": totals["success_correct"] / n,
         "timeout_accuracy": totals["timeout_correct"] / n,
         "failure_reason_accuracy": totals["failure_correct"] / n,

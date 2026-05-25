@@ -62,7 +62,7 @@ def extract_sample(sample: dict[str, Any]) -> dict[str, Any]:
     regression_values = []
     regression_mask = []
     for name in REGRESSION_TARGET_NAMES:
-        value = measured.get(name)
+        value = _lookup_regression_value(measured, name)
         if _is_valid_number(value):
             regression_values.append(float(value))
             regression_mask.append(1.0)
@@ -196,6 +196,33 @@ def _normalize_failure_reason(value: Any) -> str:
         return "none"
     reason = str(value)
     return reason if reason in FAILURE_REASON_CLASSES else "unknown"
+
+
+def _lookup_regression_value(measured: dict[str, Any], name: str) -> Any:
+    if name in measured:
+        return measured.get(name)
+
+    vector_mappings = {
+        "final_ee_x": ("final_ee_position", 0),
+        "final_ee_y": ("final_ee_position", 1),
+        "final_ee_z": ("final_ee_position", 2),
+        "target_x": ("target_position", 0),
+        "target_y": ("target_position", 1),
+        "target_z": ("target_position", 2),
+        "final_ee_roll": ("final_ee_rpy", 0),
+        "final_ee_pitch": ("final_ee_rpy", 1),
+        "final_ee_yaw": ("final_ee_rpy", 2),
+        "final_object_x": ("final_object_position", 0),
+        "final_object_y": ("final_object_position", 1),
+        "final_object_z": ("final_object_position", 2),
+    }
+    if name not in vector_mappings:
+        return None
+    source_name, index = vector_mappings[name]
+    value = measured.get(source_name)
+    if isinstance(value, (list, tuple)) and len(value) > index:
+        return value[index]
+    return None
 
 
 def _to_float(value: Any, default: float = 0.0) -> float:

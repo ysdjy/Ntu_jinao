@@ -1,4 +1,8 @@
-"""Multi-task MLP model for skill performance prediction."""
+"""Multi-task MLP model for skill performance prediction.
+
+The regression head size is schema-driven so predictor_v0/v1 datasets can use
+different continuous target sets without changing the model class.
+"""
 
 from __future__ import annotations
 

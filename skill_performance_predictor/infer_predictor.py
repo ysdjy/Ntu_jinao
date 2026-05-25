@@ -60,17 +60,65 @@ def _format_prediction(outputs: dict[str, torch.Tensor], checkpoint: dict[str, A
     failure_probs = torch.softmax(outputs["failure_reason_logits"], dim=-1)[0].detach().cpu()
     failure_idx = int(torch.argmax(failure_probs).item())
     regression = outputs["regression"][0].detach().cpu().tolist()
-    return {
+    regression_map = {
+        name: float(value) for name, value in zip(checkpoint["regression_target_names"], regression)
+    }
+    prediction = {
         "success_probability": float(torch.sigmoid(outputs["success_logits"])[0].detach().cpu().item()),
         "timeout_probability": float(torch.sigmoid(outputs["timeout_logits"])[0].detach().cpu().item()),
         "failure_reason": failure_names.get(failure_idx, "unknown"),
         "failure_reason_probabilities": {
             failure_names.get(idx, str(idx)): float(prob) for idx, prob in enumerate(failure_probs.tolist())
         },
-        "regression": {
-            name: float(value) for name, value in zip(checkpoint["regression_target_names"], regression)
-        },
+        "regression": regression_map,
     }
+    prediction.update(_structured_regression_feedback(regression_map))
+    return prediction
+
+
+def _structured_regression_feedback(regression: dict[str, float]) -> dict[str, Any]:
+    feedback: dict[str, Any] = {}
+    if {"final_ee_x", "final_ee_y", "final_ee_z"} <= set(regression):
+        feedback["final_ee_position"] = [regression["final_ee_x"], regression["final_ee_y"], regression["final_ee_z"]]
+    if {"target_x", "target_y", "target_z"} <= set(regression):
+        feedback["target_position"] = [regression["target_x"], regression["target_y"], regression["target_z"]]
+    if {"final_object_x", "final_object_y", "final_object_z"} <= set(regression):
+        feedback["final_object_position"] = [
+            regression["final_object_x"],
+            regression["final_object_y"],
+            regression["final_object_z"],
+        ]
+    for name in (
+        "final_ee_position_error",
+        "final_ee_orientation_error",
+        "final_ee_linear_speed",
+        "average_ee_linear_speed",
+        "execution_steps",
+        "execution_time",
+        "trajectory_length",
+        "object_target_position_error",
+        "object_target_xy_error",
+        "final_position_error",
+    ):
+        if name in regression:
+            feedback[name] = _non_negative(name, regression[name])
+    return feedback
+
+
+def _non_negative(name: str, value: float) -> float:
+    non_negative_names = {
+        "final_ee_position_error",
+        "final_ee_orientation_error",
+        "final_ee_linear_speed",
+        "average_ee_linear_speed",
+        "execution_steps",
+        "execution_time",
+        "trajectory_length",
+        "object_target_position_error",
+        "object_target_xy_error",
+        "final_position_error",
+    }
+    return max(0.0, float(value)) if name in non_negative_names else float(value)
 
 
 def _resolve_device(device_arg: str) -> torch.device:

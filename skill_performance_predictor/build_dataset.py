@@ -11,7 +11,7 @@ from typing import Any
 
 import torch
 
-from dataset_schema import NUMERIC_FEATURE_NAMES, REGRESSION_TARGET_NAMES, default_vocab
+from dataset_schema import NUMERIC_FEATURE_NAMES, PREDICTOR_SCHEMA_VERSION, REGRESSION_TARGET_NAMES, default_vocab
 from feature_extractor import extract_sample
 
 SMALL_DATASET_WARNING = "Dataset is too small for reliable training; this run is for pipeline validation only."
@@ -52,6 +52,7 @@ def main() -> None:
         output_dir / "dataset_info.json",
         {
             "input_jsonl": input_path.as_posix(),
+            "predictor_schema_version": PREDICTOR_SCHEMA_VERSION,
             "num_samples": len(extracted),
             "num_episodes": len({sample["episode_id"] for sample in extracted}),
             "split_counts": {name: len(value) for name, value in splits.items()},
