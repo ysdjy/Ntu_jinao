@@ -35,6 +35,18 @@ log/
 datasets/
 outputs/
 runs/
+
+# Unified experiment data (keep layout + code only)
+data/01_vlm_inputs/*
+!data/01_vlm_inputs/.gitkeep
+data/02_vlm_outputs/*
+!data/02_vlm_outputs/.gitkeep
+data/03_predictor_outputs/*
+!data/03_predictor_outputs/.gitkeep
+data/04_execution_data/*
+!data/04_execution_data/.gitkeep
+data/manifests/*
+!data/manifests/.gitkeep
 wandb/
 trajectories/
 *.jsonl

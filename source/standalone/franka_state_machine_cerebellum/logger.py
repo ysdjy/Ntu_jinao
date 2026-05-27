@@ -119,8 +119,13 @@ class BlueprintDatasetLogger(StateMachineDatasetLogger):
         super().__init__(output_dir=output_dir, save_trajectory=save_trajectory)
         self.predictor_path = self.output_dir / "predictor_dataset.jsonl"
         self._predictor_file = self.predictor_path.open("w", encoding="utf-8")
+        self.ee_diagnostics_path = self.output_dir / "ee_target_diagnostics.jsonl"
+        self._ee_diagnostics_file = self.ee_diagnostics_path.open("w", encoding="utf-8")
 
     def close(self) -> None:
+        if getattr(self, "_ee_diagnostics_file", None) is not None:
+            self._ee_diagnostics_file.close()
+            self._ee_diagnostics_file = None
         if getattr(self, "_predictor_file", None) is not None:
             self._predictor_file.close()
             self._predictor_file = None
@@ -129,6 +134,10 @@ class BlueprintDatasetLogger(StateMachineDatasetLogger):
     def log_predictor_sample(self, sample: dict[str, Any]) -> None:
         self._predictor_file.write(json.dumps(_json_safe(sample), ensure_ascii=False) + "\n")
         self._predictor_file.flush()
+
+    def log_ee_diagnostic(self, row: dict[str, Any]) -> None:
+        self._ee_diagnostics_file.write(json.dumps(_json_safe(row), ensure_ascii=False) + "\n")
+        self._ee_diagnostics_file.flush()
 
 
 class BlueprintSummaryAccumulator:

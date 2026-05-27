@@ -9,10 +9,15 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if REPO_ROOT.as_posix() not in sys.path:
+    sys.path.insert(0, REPO_ROOT.as_posix())
+
+from data.run_layout import add_experiment_run_args, resolve_experiment_run_from_args  # noqa: E402
 PREDICTOR_DIR = REPO_ROOT / "skill_performance_predictor"
 if PREDICTOR_DIR.as_posix() not in sys.path:
     sys.path.insert(0, PREDICTOR_DIR.as_posix())
@@ -29,13 +34,20 @@ DEFAULT_SCENE_STATE = {
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate VLM-readable predictor feedback for a skill blueprint.")
     parser.add_argument("--blueprint_path", "--blueprint", dest="blueprint_path", required=True, type=str)
-    parser.add_argument("--output_json", "--output_feedback", dest="output_json", required=True, type=str)
+    parser.add_argument("--output_json", "--output_feedback", dest="output_json", required=False, type=str, default=None)
     parser.add_argument("--checkpoint", "--predictor_checkpoint", dest="checkpoint", default=None, type=str)
     parser.add_argument("--predictor_data_dir", default=None, type=str, help="Reserved for compatibility with Stage IV CLI.")
     parser.add_argument("--scene_state_json", "--scene_state", dest="scene_state_json", default=None, type=str)
     parser.add_argument("--device", default="auto", type=str)
     parser.add_argument("--mock", default="false", help="Use deterministic mock predictions instead of a checkpoint.")
+    add_experiment_run_args(parser)
     args = parser.parse_args()
+
+    experiment_run = resolve_experiment_run_from_args(args)
+    if experiment_run is not None and not args.output_json:
+        args.output_json = str(experiment_run.predictor_feedback_path())
+    if not args.output_json:
+        parser.error("Provide --output_json/--output_feedback or --experiment_run_id / --experiment_run_new.")
 
     checkpoint_path = Path(args.checkpoint).expanduser() if args.checkpoint else None
     use_mock = _str_to_bool(args.mock) or checkpoint_path is None or not checkpoint_path.exists()
@@ -54,6 +66,21 @@ def main() -> None:
         json.dump(feedback, f, indent=2, ensure_ascii=False)
         f.write("\n")
     print(f"[INFO] Wrote predictor feedback to: {output_path.resolve()}")
+    if experiment_run is not None:
+        meta = {
+            "mode": "mock" if use_mock else "checkpoint",
+            "checkpoint": checkpoint_path.as_posix() if checkpoint_path else None,
+            "blueprint": Path(args.blueprint_path).expanduser().as_posix(),
+            "written_at": datetime.now().isoformat(timespec="seconds"),
+        }
+        meta_path = experiment_run.predictor_outputs / "predictor_meta.json"
+        with meta_path.open("w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        experiment_run.update_manifest(
+            "predictor",
+            {"predictor_feedback": output_path.as_posix(), "predictor_meta": meta_path.as_posix()},
+        )
 
 
 def build_predictor_feedback(

@@ -34,8 +34,10 @@ Qwen3-VL / 人工蓝图
 仓库路径：
 
 ```bash
-/home/banghai/IsaacLab/ntu_jinao_repo
+/home1/banghai/IsaacLab/ntu_jinao_repo
 ```
+
+> **本机部署说明**：见 [`docs/DEPLOYMENT.md`](DEPLOYMENT.md)。原开发环境为 Isaac Sim 4.5 + `isaaclab45`；本机为 **Isaac Lab 2.3.2 + Isaac Sim 5.1 + `env_isaaclab`**。
 
 当前已经完成：
 
@@ -144,7 +146,7 @@ git diff --stat
 已在 `isaaclab45` 环境中跑通过 1 episode：
 
 ```bash
-TERM=xterm conda run -n isaaclab45 ./isaaclab.sh -p ntu_jinao_repo/source/standalone/franka_state_machine_cerebellum/run_skill_blueprint_executor.py \
+TERM=xterm conda run -n env_isaaclab ./isaaclab.sh -p ntu_jinao_repo/source/standalone/franka_state_machine_cerebellum/run_skill_blueprint_executor.py \
   --task Isaac-Lift-Cube-Franka-IK-Rel-v0 \
   --num_episodes 1 \
   --headless \

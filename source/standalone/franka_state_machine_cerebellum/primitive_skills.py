@@ -57,15 +57,17 @@ class PrimitiveSkillResult:
 class PrimitiveSkillExecutor:
     """Executes blueprint primitive skills through the existing IK-Rel environment."""
 
-    def __init__(self, cerebellum, logger):
+    def __init__(self, cerebellum, logger, skill_target_marker=None):
         self.cerebellum = cerebellum
         self.logger = logger
         self.device = cerebellum.device
         self.env = cerebellum.env
         self.unwrapped = cerebellum.unwrapped
         self.last_gripper_command = OPEN_GRIPPER
+        self.skill_target_marker = skill_target_marker
 
     def execute(self, node) -> PrimitiveSkillResult:
+        self._log_skill_start(node)
         if node.type == "parallel":
             return self.execute_parallel(node)
         skill = str(node.skill)
@@ -106,6 +108,8 @@ class PrimitiveSkillExecutor:
             and str((orientation_goal.get("params") or {}).get("orientation_mode", "")) != "none"
         )
         goal_count = int(position_goal is not None) + int(orientation_goal is not None)
+        # Require stable simultaneous convergence before leaving a parallel node.
+        confirm_steps_required = 3
 
         position_params = dict((position_goal or {}).get("params") or {})
         orientation_params = dict((orientation_goal or {}).get("params") or {})
@@ -113,7 +117,7 @@ class PrimitiveSkillExecutor:
         position_speed = float(position_params.get("speed", 0.08)) if has_position else 0.0
         orientation_tolerance = float(orientation_params.get("orientation_tolerance", 0.08)) if orientation_goal else 0.0
         angular_speed = float(orientation_params.get("angular_speed", 0.08)) if orientation_goal else 0.0
-        yaw_only = bool(orientation_params.get("keep_top_down", True)) if orientation_goal else False
+        yaw_only = False if orientation_goal else False
 
         pre_state = self._scene_state()
         start_step = self.cerebellum.global_step
@@ -129,6 +133,7 @@ class PrimitiveSkillExecutor:
         orient_error_type: str | None = None
         timed_out = False
         failure_reason: str | None = None
+        success_streak = 0
 
         for _ in range(max(0, timeout_steps)):
             ee_pos, ee_quat = self.cerebellum._read_ee_pose_w()
@@ -153,12 +158,17 @@ class PrimitiveSkillExecutor:
                     else:
                         orient_error, orient_error_type = compute_orientation_error(ee_quat, target_orientation_w, yaw_only=yaw_only)
                         orientation_ok = orient_error <= orientation_tolerance
+            self._visualize_skill_target(target_position, target_orientation_w, state_name="PARALLEL_TARGET")
 
             if position_ok and orientation_ok:
-                break
+                success_streak += 1
+                if success_streak >= confirm_steps_required:
+                    break
+            else:
+                success_streak = 0
 
             action = torch.zeros((self.unwrapped.num_envs, 7), device=self.device)
-            if has_position and target_position is not None and not position_ok:
+            if has_position and target_position is not None:
                 delta_b = self.cerebellum._compute_position_delta_in_base_frame(target_position[:, :3], ee_pos)
                 action[:, :3] = torch.clamp(delta_b, min=-abs(position_speed), max=abs(position_speed))
             if has_orientation and target_orientation_w is not None and not orientation_ok:
@@ -193,6 +203,8 @@ class PrimitiveSkillExecutor:
                 node_type="parallel",
                 position_goal=position_goal_log,
                 orientation_goal=orientation_goal_log,
+                target_pose_for_diag=target_position,
+                target_orientation_for_diag=target_orientation_w,
             )
             if self.cerebellum._episode_done() or self.cerebellum.global_step >= self.cerebellum.max_episode_steps:
                 failure_reason = "env_done"
@@ -207,7 +219,7 @@ class PrimitiveSkillExecutor:
                 else:
                     failure_reason = "parallel_timeout"
 
-        success = position_ok and orientation_ok and failure_reason is None
+        success = position_ok and orientation_ok and success_streak >= confirm_steps_required and failure_reason is None
         post_state = self._scene_state()
         parallel_mode = str(node.parallel_mode or "all_success")
         return PrimitiveSkillResult(
@@ -266,7 +278,7 @@ class PrimitiveSkillExecutor:
         tolerance = float(params.get("orientation_tolerance", 0.08))
         angular_speed = float(params.get("angular_speed", 0.08))
         timeout_steps = int(params.get("timeout_steps", 200))
-        yaw_only = bool(params.get("keep_top_down", True))
+        yaw_only = False
         gripper_command = self.last_gripper_command
 
         pre_state = self._scene_state()
@@ -296,6 +308,7 @@ class PrimitiveSkillExecutor:
             if orient_error <= tolerance:
                 converged = True
                 break
+            self._visualize_skill_target(None, target_orientation_w, state_name="ALIGN_ORIENTATION_TARGET")
             action = torch.zeros((self.unwrapped.num_envs, 7), device=self.device)
             action[:, 3:6] = compute_orientation_delta_in_base_frame(
                 self.cerebellum, ee_quat, target_orientation_w, angular_speed
@@ -315,6 +328,7 @@ class PrimitiveSkillExecutor:
                 "ALIGN_ORIENTATION",
                 step_records,
                 orientation_goal=orientation_goal_log,
+                target_orientation_for_diag=target_orientation_w,
             )
             if self.cerebellum._episode_done() or self.cerebellum.global_step >= self.cerebellum.max_episode_steps:
                 break
@@ -351,10 +365,12 @@ class PrimitiveSkillExecutor:
         target_pose[:, 0] += float(xy_offset[0])
         target_pose[:, 1] += float(xy_offset[1])
         target_pose[:, 2] += float(params.get("height_offset", 0.12))
+        target_pose[:, 3:7] = self._target_orientation_for_motion(node=node, target_pose=target_pose, current_quat_w=None)
         return self._run_motion_skill(
             node=node,
             target_pose=target_pose,
             tolerance=float(params.get("position_tolerance", 0.025)),
+            orientation_tolerance=float(params.get("orientation_tolerance", 0.08)),
             timeout_steps=int(params.get("timeout_steps", 250)),
             speed=float(params.get("speed", 0.08)),
             gripper_command=self.last_gripper_command,
@@ -370,10 +386,12 @@ class PrimitiveSkillExecutor:
             target_pose = self._target_pose(target_ref)
             offset = params.get("offset", [0.0, 0.0, 0.0])
             target_pose[:, :3] += torch.tensor(offset[:3], device=self.device).reshape(1, 3)
+        target_pose[:, 3:7] = self._target_orientation_for_motion(node=node, target_pose=target_pose, current_quat_w=None)
         return self._run_motion_skill(
             node=node,
             target_pose=target_pose,
             tolerance=float(params.get("position_tolerance", 0.025)),
+            orientation_tolerance=float(params.get("orientation_tolerance", 0.08)),
             timeout_steps=int(params.get("timeout_steps", 250)),
             speed=float(params.get("speed", 0.08)),
             gripper_command=self.last_gripper_command,
@@ -384,21 +402,40 @@ class PrimitiveSkillExecutor:
         params = node.params
         ee_pos, ee_quat = self.cerebellum._read_ee_pose_w()
         target_pose = torch.cat([ee_pos.clone(), ee_quat.clone()], dim=-1)
+        ref_pose = self._target_pose(str(node.target)) if str(node.target) != "current" else None
+        # Default behavior: during descend, keep x/y aligned with the target reference
+        # (typically cube) so the gripper does not descend with residual lateral offset.
+        if ref_pose is not None:
+            target_pose[:, 0] = ref_pose[:, 0]
+            target_pose[:, 1] = ref_pose[:, 1]
         if params.get("target_height") is not None:
             target_pose[:, 2] = float(params["target_height"])
         elif params.get("relative_z") is not None:
             target_pose[:, 2] = ee_pos[:, 2] - abs(float(params["relative_z"]))
         else:
-            ref_pose = self._target_pose(str(node.target))
-            target_pose[:, 2] = ref_pose[:, 2]
+            if ref_pose is not None:
+                target_pose[:, 2] = ref_pose[:, 2]
+        target_pose[:, 3:7] = self._target_orientation_for_motion(node=node, target_pose=target_pose, current_quat_w=ee_quat)
+
+        def _refresh_descend_target(pose: torch.Tensor) -> torch.Tensor:
+            if ref_pose is None:
+                return pose
+            refreshed = pose.clone()
+            cur_ref = self._target_pose(str(node.target))
+            refreshed[:, 0] = cur_ref[:, 0]
+            refreshed[:, 1] = cur_ref[:, 1]
+            return refreshed
+
         return self._run_motion_skill(
             node=node,
             target_pose=target_pose,
             tolerance=float(params.get("position_tolerance", 0.015)),
+            orientation_tolerance=float(params.get("orientation_tolerance", 0.08)),
             timeout_steps=int(params.get("timeout_steps", 150)),
             speed=float(params.get("speed", 0.035)),
             gripper_command=self.last_gripper_command,
             state_name="DESCEND",
+            dynamic_target_fn=_refresh_descend_target,
         )
 
     def _execute_grasp(self, node) -> PrimitiveSkillResult:
@@ -413,10 +450,12 @@ class PrimitiveSkillExecutor:
         ee_pos, ee_quat = self.cerebellum._read_ee_pose_w()
         target_pose = torch.cat([ee_pos.clone(), ee_quat.clone()], dim=-1)
         target_pose[:, 2] = ee_pos[:, 2] + float(params.get("lift_height", 0.18))
+        target_pose[:, 3:7] = self._target_orientation_for_motion(node=node, target_pose=target_pose, current_quat_w=ee_quat)
         return self._run_motion_skill(
             node=node,
             target_pose=target_pose,
             tolerance=float(params.get("position_tolerance", 0.025)),
+            orientation_tolerance=float(params.get("orientation_tolerance", 0.08)),
             timeout_steps=int(params.get("timeout_steps", 200)),
             speed=float(params.get("speed", 0.08)),
             gripper_command=CLOSE_GRIPPER,
@@ -427,6 +466,7 @@ class PrimitiveSkillExecutor:
         params = node.params
         target_pose = self._target_pose(str(node.target))
         target_pose[:, 2] = target_pose[:, 2] + float(params.get("place_height", 0.045))
+        target_pose[:, 3:7] = self._target_orientation_for_motion(node=node, target_pose=target_pose, current_quat_w=None)
         pre_state = self._scene_state()
         start_step = self.cerebellum.global_step
         step_records: list[dict[str, Any]] = []
@@ -436,6 +476,7 @@ class PrimitiveSkillExecutor:
         reached = self._move_to_pose(
             target_pose=target_pose,
             tolerance=float(params.get("position_tolerance", 0.035)),
+            orientation_tolerance=float(params.get("orientation_tolerance", 0.08)),
             max_steps=move_budget,
             speed=float(params.get("speed", 0.08)),
             gripper_command=CLOSE_GRIPPER,
@@ -476,10 +517,12 @@ class PrimitiveSkillExecutor:
         ee_pos, ee_quat = self.cerebellum._read_ee_pose_w()
         target_pose = torch.cat([ee_pos.clone(), ee_quat.clone()], dim=-1)
         target_pose[:, 2] = ee_pos[:, 2] + float(params.get("retreat_height", 0.15))
+        target_pose[:, 3:7] = self._target_orientation_for_motion(node=node, target_pose=target_pose, current_quat_w=ee_quat)
         return self._run_motion_skill(
             node=node,
             target_pose=target_pose,
             tolerance=float(params.get("position_tolerance", 0.035)),
+            orientation_tolerance=float(params.get("orientation_tolerance", 0.08)),
             timeout_steps=int(params.get("timeout_steps", 150)),
             speed=float(params.get("speed", 0.08)),
             gripper_command=OPEN_GRIPPER,
@@ -502,10 +545,12 @@ class PrimitiveSkillExecutor:
         node,
         target_pose: torch.Tensor,
         tolerance: float,
+        orientation_tolerance: float,
         timeout_steps: int,
         speed: float,
         gripper_command: float,
         state_name: str,
+        dynamic_target_fn=None,
     ) -> PrimitiveSkillResult:
         pre_state = self._scene_state()
         start_step = self.cerebellum.global_step
@@ -513,6 +558,7 @@ class PrimitiveSkillExecutor:
         reached = self._move_to_pose(
             target_pose=target_pose,
             tolerance=tolerance,
+            orientation_tolerance=orientation_tolerance,
             max_steps=timeout_steps,
             speed=speed,
             gripper_command=gripper_command,
@@ -520,6 +566,7 @@ class PrimitiveSkillExecutor:
             active_skill=str(node.skill),
             state_name=state_name,
             step_records=step_records,
+            dynamic_target_fn=dynamic_target_fn,
         )
         self.last_gripper_command = gripper_command
         post_state = self._scene_state()
@@ -571,6 +618,7 @@ class PrimitiveSkillExecutor:
         self,
         target_pose: torch.Tensor,
         tolerance: float,
+        orientation_tolerance: float,
         max_steps: int,
         speed: float,
         gripper_command: float,
@@ -578,22 +626,52 @@ class PrimitiveSkillExecutor:
         active_skill: str,
         state_name: str,
         step_records: list[dict[str, Any]],
+        dynamic_target_fn=None,
     ) -> bool:
+        self._visualize_skill_target(target_pose, None, state_name=state_name)
         for _ in range(max(0, max_steps)):
-            ee_pos, _ = self.cerebellum._read_ee_pose_w()
-            if torch.norm(target_pose[:, :3] - ee_pos, dim=-1)[0].item() < tolerance:
+            if dynamic_target_fn is not None:
+                target_pose = dynamic_target_fn(target_pose)
+            ee_pos, ee_quat = self.cerebellum._read_ee_pose_w()
+            pos_error = torch.norm(target_pose[:, :3] - ee_pos, dim=-1)[0].item()
+            orientation_error, _ = compute_orientation_error(
+                ee_quat,
+                target_pose[:, 3:7],
+                yaw_only=False,
+            )
+            if pos_error < tolerance and orientation_error < orientation_tolerance:
                 return True
             delta_b = self.cerebellum._compute_position_delta_in_base_frame(target_pose[:, :3], ee_pos)
             delta_b = torch.clamp(delta_b, min=-abs(speed), max=abs(speed))
             action = torch.zeros((self.unwrapped.num_envs, 7), device=self.device)
             action[:, :3] = delta_b
-            # Stage 2 first version keeps orientation deltas at zero as requested.
+            orientation_delta = compute_orientation_delta_in_base_frame(
+                self.cerebellum,
+                ee_quat,
+                target_pose[:, 3:7],
+                angular_speed=float(min(abs(speed), 0.10)),
+            )
+            action[:, 3:6] = orientation_delta
             action[:, 6] = gripper_command
-            self._step(action, node_id, active_skill, state_name, step_records)
+            self._step(
+                action,
+                node_id,
+                active_skill,
+                state_name,
+                step_records,
+                target_pose_for_diag=target_pose,
+                target_orientation_for_diag=target_pose[:, 3:7],
+            )
             if self.cerebellum._episode_done() or self.cerebellum.global_step >= self.cerebellum.max_episode_steps:
                 return False
-        ee_pos, _ = self.cerebellum._read_ee_pose_w()
-        return torch.norm(target_pose[:, :3] - ee_pos, dim=-1)[0].item() < tolerance
+        ee_pos, ee_quat = self.cerebellum._read_ee_pose_w()
+        pos_error = torch.norm(target_pose[:, :3] - ee_pos, dim=-1)[0].item()
+        orientation_error, _ = compute_orientation_error(
+            ee_quat,
+            target_pose[:, 3:7],
+            yaw_only=False,
+        )
+        return pos_error < tolerance and orientation_error < orientation_tolerance
 
     def _hold(
         self,
@@ -609,7 +687,13 @@ class PrimitiveSkillExecutor:
             action = torch.zeros((self.unwrapped.num_envs, 7), device=self.device)
             action[:, 6] = gripper_command
             final_action = _tensor_to_list(action[0])
-            self._step(action, node_id, active_skill, state_name, step_records)
+            self._step(
+                action,
+                node_id,
+                active_skill,
+                state_name,
+                step_records,
+            )
             if self.cerebellum._episode_done() or self.cerebellum.global_step >= self.cerebellum.max_episode_steps:
                 break
         return final_action
@@ -624,6 +708,8 @@ class PrimitiveSkillExecutor:
         node_type: str | None = None,
         position_goal: dict[str, Any] | None = None,
         orientation_goal: dict[str, Any] | None = None,
+        target_pose_for_diag: torch.Tensor | None = None,
+        target_orientation_for_diag: torch.Tensor | None = None,
     ) -> None:
         result = self.env.step(action)
         if len(result) == 5:
@@ -657,6 +743,14 @@ class PrimitiveSkillExecutor:
         }
         step_records.append(row)
         self.logger.log_trajectory_step(row)
+        self._log_ee_target_diagnostic(
+            row=row,
+            node_id=node_id,
+            active_skill=active_skill,
+            state_name=state_name,
+            target_pose_for_diag=target_pose_for_diag,
+            target_orientation_for_diag=target_orientation_for_diag,
+        )
         self.cerebellum.global_step += 1
 
     def _compute_position_target_from_goal(self, position_goal: dict[str, Any] | None) -> torch.Tensor | None:
@@ -725,6 +819,138 @@ class PrimitiveSkillExecutor:
             "robot_joint_pos": state["robot_joint_pos"],
             "step_index": state["step_index"],
         }
+
+    def _target_orientation_for_motion(
+        self,
+        node,
+        target_pose: torch.Tensor,
+        current_quat_w: torch.Tensor | None,
+    ) -> torch.Tensor:
+        params = dict(node.params or {})
+        skill_name = str(getattr(node, "skill", "") or "")
+        default_mode = "align_yaw_with_target"
+        if skill_name in {"descend", "lift", "retreat"}:
+            default_mode = "keep_current"
+        mode = str(params.get("orientation_mode", default_mode))
+        if mode == "none":
+            if current_quat_w is None:
+                _, ee_quat = self.cerebellum._read_ee_pose_w()
+                return ee_quat.clone()
+            return current_quat_w.clone()
+        if current_quat_w is None:
+            _, current_quat_w = self.cerebellum._read_ee_pose_w()
+        orientation_params = {
+            "orientation_mode": mode,
+            "keep_top_down": bool(params.get("keep_top_down", True)),
+            "fixed_yaw": params.get("fixed_yaw"),
+            "target_rpy": params.get("target_rpy"),
+        }
+        target_orientation_w = compute_target_orientation_w(
+            self.cerebellum,
+            str(node.target),
+            mode,
+            orientation_params,
+            current_quat_w,
+            self._target_pose,
+        )
+        if target_orientation_w is None:
+            return current_quat_w.clone()
+        return target_orientation_w
+
+    def _log_skill_start(self, node) -> None:
+        skill_name = "parallel" if node.type == "parallel" else str(node.skill)
+        target = ""
+        if node.type == "parallel":
+            goals = node.goals or {}
+            position_goal = goals.get("position_goal") or {}
+            orientation_goal = goals.get("orientation_goal") or {}
+            pos_target = str(position_goal.get("target", ""))
+            ori_target = str(orientation_goal.get("target", ""))
+            target = f"{pos_target}+{ori_target}".strip("+")
+        else:
+            target = str(node.target or "")
+        params_repr = node.params if isinstance(node.params, dict) else {}
+        print(
+            f"[SKILL] node={node.node_id} type={node.type} skill={skill_name} "
+            f"target={target} params={params_repr}"
+        )
+
+    def _visualize_skill_target(
+        self,
+        target_pose: torch.Tensor | None,
+        target_orientation_w: torch.Tensor | None,
+        state_name: str,
+    ) -> None:
+        if self.skill_target_marker is None:
+            return
+        if target_pose is None and target_orientation_w is None:
+            return
+        if target_pose is None:
+            ee_pos, _ = self.cerebellum._read_ee_pose_w()
+            translations = ee_pos
+        else:
+            translations = target_pose[:, :3]
+        if target_orientation_w is not None:
+            orientations = target_orientation_w
+        elif target_pose is not None:
+            orientations = target_pose[:, 3:7]
+        else:
+            _, ee_quat = self.cerebellum._read_ee_pose_w()
+            orientations = ee_quat
+        self.skill_target_marker.visualize(
+            translations=translations,
+            orientations=orientations,
+        )
+
+    def _log_ee_target_diagnostic(
+        self,
+        row: dict[str, Any],
+        node_id: str,
+        active_skill: str,
+        state_name: str,
+        target_pose_for_diag: torch.Tensor | None,
+        target_orientation_for_diag: torch.Tensor | None,
+    ) -> None:
+        if not hasattr(self.logger, "log_ee_diagnostic"):
+            return
+        ee_pose = row.get("ee_pose")
+        if not isinstance(ee_pose, list) or len(ee_pose) < 7:
+            return
+        ee_pos = [float(ee_pose[0]), float(ee_pose[1]), float(ee_pose[2])]
+        ee_quat = torch.tensor([ee_pose[3:7]], device=self.device, dtype=torch.float32)
+
+        target_pos = None
+        target_ori = None
+        if target_pose_for_diag is not None:
+            target_pos = [float(x) for x in _tensor_to_list(target_pose_for_diag[0, :3])]
+            target_ori = [float(x) for x in _tensor_to_list(target_pose_for_diag[0, 3:7])]
+        if target_orientation_for_diag is not None:
+            target_ori = [float(x) for x in _tensor_to_list(target_orientation_for_diag[0])]
+
+        xy_error = None
+        z_error = None
+        orientation_error = None
+        if target_pos is not None:
+            dx = ee_pos[0] - target_pos[0]
+            dy = ee_pos[1] - target_pos[1]
+            xy_error = (dx * dx + dy * dy) ** 0.5
+            z_error = abs(ee_pos[2] - target_pos[2])
+        if target_ori is not None:
+            target_quat = torch.tensor([target_ori], device=self.device, dtype=torch.float32)
+            orientation_error, _ = compute_orientation_error(ee_quat, target_quat, yaw_only=False)
+
+        payload = {
+            "global_step": row.get("global_step"),
+            "node_id": node_id,
+            "active_skill": active_skill,
+            "state_name": state_name,
+            "ee_pose": [float(x) for x in ee_pose[:7]],
+            "target_pose": target_pos + target_ori if (target_pos is not None and target_ori is not None) else None,
+            "xy_error": xy_error,
+            "z_error": z_error,
+            "orientation_error": orientation_error,
+        }
+        self.logger.log_ee_diagnostic(payload)
 
     def _empty_result(self, node, success: bool, failure_reason: str) -> PrimitiveSkillResult:
         state = self._scene_state()

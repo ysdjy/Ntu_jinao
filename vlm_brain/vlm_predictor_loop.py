@@ -5,16 +5,20 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import sys
 from pathlib import Path
 from typing import Any
 
+VLM_DIR = Path(__file__).resolve().parent
+REPO_ROOT = VLM_DIR.parents[0]
+if REPO_ROOT.as_posix() not in sys.path:
+    sys.path.insert(0, REPO_ROOT.as_posix())
+
+from data.run_layout import add_experiment_run_args, resolve_experiment_run_from_args  # noqa: E402
 from blueprint_parser import extract_json_from_text
 from blueprint_validator import validate_blueprint
 from predictor_bridge import build_predictor_feedback
 from run_vlm_inference import build_generation_prompt
-
-VLM_DIR = Path(__file__).resolve().parent
-REPO_ROOT = VLM_DIR.parents[0]
 
 
 def main() -> None:
@@ -25,14 +29,28 @@ def main() -> None:
     parser.add_argument("--task", required=True)
     parser.add_argument("--predictor_checkpoint", default=None)
     parser.add_argument("--predictor_data_dir", default=None)
-    parser.add_argument("--output_dir", required=True)
+    parser.add_argument("--output_dir", required=False, default=None)
     parser.add_argument("--max_refine_iters", default=2, type=int)
     parser.add_argument("--dry_run", default="false")
     parser.add_argument("--mock_predictor", default="false")
+    add_experiment_run_args(parser)
     args = parser.parse_args()
 
-    output_dir = Path(args.output_dir).expanduser()
-    output_dir.mkdir(parents=True, exist_ok=True)
+    experiment_run = resolve_experiment_run_from_args(args)
+    if experiment_run is not None:
+        experiment_run.archive_vlm_inputs(
+            scene_state=_read_json(Path(args.scene_state)),
+            task=args.task,
+            image_path=args.image,
+            config_path=args.config,
+            extra={"dry_run": _str_to_bool(args.dry_run), "mock_predictor": _str_to_bool(args.mock_predictor)},
+        )
+        output_dir = experiment_run.vlm_output_dir()
+    elif args.output_dir:
+        output_dir = Path(args.output_dir).expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        parser.error("Provide --output_dir or --experiment_run_id / --experiment_run_new.")
     scene_state = _read_json(Path(args.scene_state))
     dry_run = _str_to_bool(args.dry_run)
     mock_predictor = _str_to_bool(args.mock_predictor)
@@ -69,6 +87,16 @@ def main() -> None:
         use_mock=mock_predictor or dry_run or not args.predictor_checkpoint,
     )
     _write_json(output_dir / "predictor_feedback_iter0.json", predictor_feedback)
+    if experiment_run is not None:
+        feedback_path = experiment_run.predictor_feedback_path()
+        _write_json(feedback_path, predictor_feedback)
+        experiment_run.update_manifest(
+            "predictor",
+            {
+                "predictor_feedback": feedback_path.as_posix(),
+                "predictor_feedback_iter0": (output_dir / "predictor_feedback_iter0.json").as_posix(),
+            },
+        )
 
     high_risk_nodes = predictor_feedback.get("overall_assessment", {}).get("high_risk_nodes", [])
     revised_paths: list[str] = []
@@ -93,6 +121,15 @@ def main() -> None:
         },
     )
     print(f"[INFO] Loop outputs written to: {output_dir.resolve()}")
+    if experiment_run is not None:
+        experiment_run.update_manifest(
+            "vlm_outputs",
+            {
+                "loop_summary": (output_dir / "loop_summary.json").as_posix(),
+                "initial_blueprint": (output_dir / "initial_blueprint.json").as_posix(),
+                "revised_blueprints": revised_paths,
+            },
+        )
 
 
 def _run_real_generation(args, scene_state: dict[str, Any], output_dir: Path) -> dict[str, Any]:

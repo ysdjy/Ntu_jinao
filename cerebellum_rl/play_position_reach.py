@@ -1,0 +1,205 @@
+"""Play/evaluate Stage 1.1 constrained Franka position reach checkpoints."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+import time
+from pathlib import Path
+
+from isaaclab.app import AppLauncher
+
+# --- local path bootstrap ---
+CURRENT_FILE = Path(__file__).resolve()
+CEREBELLUM_ROOT = CURRENT_FILE.parent
+NTU_REPO_ROOT = CEREBELLUM_ROOT.parent
+if str(NTU_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(NTU_REPO_ROOT))
+
+import cerebellum_rl.register_tasks  # noqa: F401
+
+
+def add_rsl_rl_args(parser: argparse.ArgumentParser) -> None:
+    """Add RSL-RL args compatible with Isaac Lab play script."""
+    group = parser.add_argument_group("rsl_rl", description="Arguments for RSL-RL agent.")
+    group.add_argument("--experiment_name", type=str, default=None, help="Experiment folder name.")
+    group.add_argument("--run_name", type=str, default=None, help="Run name suffix.")
+    group.add_argument("--resume", action="store_true", default=False, help="Resume from checkpoint.")
+    group.add_argument("--load_run", type=str, default=None, help="Run folder for resume.")
+    group.add_argument("--checkpoint", type=str, default=None, help="Checkpoint file for resume.")
+    group.add_argument(
+        "--logger",
+        type=str,
+        default=None,
+        choices={"wandb", "tensorboard", "neptune"},
+        help="Logger module.",
+    )
+    group.add_argument("--log_project_name", type=str, default=None, help="Logger project name.")
+
+
+def update_rsl_rl_cfg(agent_cfg, args_cli: argparse.Namespace):
+    """Update RSL-RL cfg from CLI args."""
+    if args_cli.seed is not None:
+        agent_cfg.seed = args_cli.seed
+    if args_cli.resume is not None:
+        agent_cfg.resume = args_cli.resume
+    if args_cli.load_run is not None:
+        agent_cfg.load_run = args_cli.load_run
+    if args_cli.checkpoint is not None:
+        agent_cfg.load_checkpoint = args_cli.checkpoint
+    if args_cli.run_name is not None:
+        agent_cfg.run_name = args_cli.run_name
+    if args_cli.experiment_name is not None:
+        agent_cfg.experiment_name = args_cli.experiment_name
+    if args_cli.logger is not None:
+        agent_cfg.logger = args_cli.logger
+    if agent_cfg.logger in {"wandb", "neptune"} and args_cli.log_project_name:
+        agent_cfg.wandb_project = args_cli.log_project_name
+        agent_cfg.neptune_project = args_cli.log_project_name
+    return agent_cfg
+
+parser = argparse.ArgumentParser(description="Play constrained position reach with RSL-RL.")
+parser.add_argument("--video", action="store_true", default=False, help="Record video.")
+parser.add_argument("--video_length", type=int, default=300, help="Video length.")
+parser.add_argument("--disable_fabric", action="store_true", default=False, help="Disable fabric.")
+parser.add_argument("--num_envs", type=int, default=16, help="Number of envs.")
+parser.add_argument("--task", type=str, default="Isaac-ConstrainedReach-Position-Franka-v0", help="Task name.")
+parser.add_argument("--agent", type=str, default="rsl_rl_cfg_entry_point", help="Agent cfg entry point.")
+parser.add_argument("--seed", type=int, default=None, help="Seed.")
+parser.add_argument("--real-time", action="store_true", default=False, help="Real-time play.")
+parser.add_argument(
+    "--no_target_vis",
+    action="store_true",
+    default=False,
+    help="Disable target/current pose markers in GUI.",
+)
+parser.add_argument(
+    "--log_interval",
+    type=int,
+    default=60,
+    help="Print success/error metrics every N environment steps.",
+)
+add_rsl_rl_args(parser)
+AppLauncher.add_app_launcher_args(parser)
+args_cli, hydra_args = parser.parse_known_args()
+
+if args_cli.video:
+    args_cli.enable_cameras = True
+
+sys.argv = [sys.argv[0]] + hydra_args
+
+app_launcher = AppLauncher(args_cli)
+simulation_app = app_launcher.app
+
+import gymnasium as gym  # noqa: E402
+import torch  # noqa: E402
+from rsl_rl.runners import DistillationRunner, OnPolicyRunner  # noqa: E402
+
+from isaaclab.envs import ManagerBasedRLEnvCfg  # noqa: E402
+from isaaclab.managers import SceneEntityCfg  # noqa: E402
+from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper  # noqa: E402
+from isaaclab_tasks.utils import get_checkpoint_path  # noqa: E402
+from isaaclab_tasks.utils.hydra import hydra_task_config  # noqa: E402
+
+from cerebellum_rl.constrained_reach.utils import STAGE1_SUCCESS_THRESHOLD, get_ee_and_target_position_env  # noqa: E402
+
+
+@hydra_task_config(args_cli.task, args_cli.agent)
+def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
+    agent_cfg = update_rsl_rl_cfg(agent_cfg, args_cli)
+    env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
+    env_cfg.seed = agent_cfg.seed
+    env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
+    enable_target_vis = not args_cli.no_target_vis
+    if enable_target_vis:
+        env_cfg.commands.ee_pose.debug_vis = True
+
+    log_root_path = os.path.abspath(os.path.join("logs", "rsl_rl", agent_cfg.experiment_name))
+    resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
+    print(f"[INFO]: Loading model checkpoint from: {resume_path}")
+
+    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+    if enable_target_vis:
+        env.unwrapped.command_manager.set_debug_vis(True)
+        print("[INFO] Target/current pose markers enabled for play visualization.")
+    env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+    if agent_cfg.class_name == "OnPolicyRunner":
+        runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+    elif agent_cfg.class_name == "DistillationRunner":
+        runner = DistillationRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+    else:
+        raise ValueError(f"Unsupported runner class: {agent_cfg.class_name}")
+    runner.load(resume_path)
+    policy = runner.get_inference_policy(device=env.unwrapped.device)
+
+    obs = env.get_observations()
+    step_dt = env.unwrapped.step_dt
+    steps = 0
+    episode_success_count = 0
+    episode_count = 0
+    robot_cfg = SceneEntityCfg("robot", joint_names=["panda_joint.*"])
+    command_name = "ee_pose"
+
+    def _print_play_metrics(tag: str) -> None:
+        base_env = env.unwrapped
+        ee_pos, target_pos = get_ee_and_target_position_env(base_env, robot_cfg, command_name)
+        pos_error = torch.norm(target_pos - ee_pos, dim=1)
+        success_mask = pos_error < STAGE1_SUCCESS_THRESHOLD
+        success_rate = success_mask.float().mean().item()
+        mean_pos_error = pos_error.mean().item()
+        print(
+            f"[PLAY][{tag}] mean_position_error={mean_pos_error:.4f} m | "
+            f"success_rate@{STAGE1_SUCCESS_THRESHOLD:.2f}m={success_rate:.4f} | "
+            f"episodes={episode_count} | episode_success_rate={episode_success_count / max(episode_count, 1):.4f}"
+        )
+
+    print(f"[INFO] Play success threshold = {STAGE1_SUCCESS_THRESHOLD:.2f} m")
+    while simulation_app.is_running():
+        start = time.time()
+        with torch.inference_mode():
+            actions = policy(obs)
+            obs, _, dones, extras = env.step(actions)
+        steps += 1
+
+        if steps == 1 or (args_cli.log_interval > 0 and steps % args_cli.log_interval == 0):
+            if "log" in extras and "stage1/mean_position_error" in extras["log"]:
+                mean_err = extras["log"]["stage1/mean_position_error"]
+                succ = extras["log"].get("stage1/success_rate", None)
+                if isinstance(mean_err, torch.Tensor):
+                    mean_err = mean_err.item()
+                if isinstance(succ, torch.Tensor):
+                    succ = succ.item()
+                print(
+                    f"[PLAY][step {steps}] mean_position_error={mean_err:.4f} m | "
+                    f"success_rate@{STAGE1_SUCCESS_THRESHOLD:.2f}m={succ:.4f}"
+                )
+            else:
+                _print_play_metrics(f"step {steps}")
+
+        done_ids = (dones > 0).nonzero(as_tuple=False).squeeze(-1)
+        if done_ids.numel() > 0:
+            base_env = env.unwrapped
+            ee_pos, target_pos = get_ee_and_target_position_env(base_env, robot_cfg, command_name)
+            pos_error = torch.norm(target_pos - ee_pos, dim=1)
+            for env_id in done_ids.tolist():
+                episode_count += 1
+                if pos_error[env_id] < STAGE1_SUCCESS_THRESHOLD:
+                    episode_success_count += 1
+            print(
+                f"[PLAY][episode done] env_ids={done_ids.tolist()} | "
+                f"cumulative_episode_success_rate={episode_success_count / max(episode_count, 1):.4f}"
+            )
+
+        if args_cli.video and steps >= args_cli.video_length:
+            break
+        sleep_time = step_dt - (time.time() - start)
+        if args_cli.real_time and sleep_time > 0.0:
+            time.sleep(sleep_time)
+    env.close()
+
+
+if __name__ == "__main__":
+    main()
+    simulation_app.close()
+

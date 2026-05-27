@@ -5,6 +5,10 @@
 本仓库**不包含** Isaac Lab 官方源码、仿真数据集或预训练权重。仿真部分需在已安装 Isaac Lab 的环境中通过 `isaaclab.sh` 运行；预测器训练为独立 PyTorch 项目，**不需要启动 Isaac Sim**。
 
 > **迁移 / AI 接手入口**：如果要把项目上传到 GitHub 并转移到大显存机器，请先阅读 [`docs/AI_HANDOFF.md`](docs/AI_HANDOFF.md)。该文档记录了当前完成状态、小显存机器限制、GitHub 上传注意事项、真实 Qwen3-VL 接入步骤和后续任务优先级。
+>
+> **本机（/home1/banghai/IsaacLab）部署说明**：见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)（Isaac Sim 5.1 / Isaac Lab 2.3.2 / `env_isaaclab`）。
+>
+> **大脑模块替换接口（重点）**：见 [`docs/VLM_BRAIN_INTERFACE.md`](docs/VLM_BRAIN_INTERFACE.md)（详细说明 VLM 输入/输出、每个技能参数语义、蓝图模板与对接约束）。
 
 ---
 

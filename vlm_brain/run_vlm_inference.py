@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if REPO_ROOT.as_posix() not in sys.path:
+    sys.path.insert(0, REPO_ROOT.as_posix())
+
+from data.run_layout import add_experiment_run_args, resolve_experiment_run_from_args  # noqa: E402
 from blueprint_parser import extract_json_from_text
 from blueprint_validator import validate_blueprint
 from qwen3vl_loader import generate_response, load_qwen3vl_model
@@ -21,14 +27,28 @@ def main() -> None:
     parser.add_argument("--image", default=None)
     parser.add_argument("--scene_state", required=True)
     parser.add_argument("--task", required=True)
-    parser.add_argument("--output_json", required=True)
+    parser.add_argument("--output_json", required=False, default=None)
     parser.add_argument("--validate", default="true")
     parser.add_argument("--dry_run", default="false")
+    add_experiment_run_args(parser)
     args = parser.parse_args()
 
     config = _read_json(Path(args.config))
     scene_state = _read_json(Path(args.scene_state))
-    output_json = Path(args.output_json).expanduser()
+    experiment_run = resolve_experiment_run_from_args(args)
+    if experiment_run is not None:
+        experiment_run.archive_vlm_inputs(
+            scene_state=scene_state,
+            task=args.task,
+            image_path=args.image,
+            config_path=args.config,
+            extra={"dry_run": _str_to_bool(args.dry_run)},
+        )
+        output_json = experiment_run.vlm_output_dir() / "generated_blueprint.json"
+    elif args.output_json:
+        output_json = Path(args.output_json).expanduser()
+    else:
+        parser.error("Provide --output_json or --experiment_run_id / --experiment_run_new.")
     output_dir = output_json.parent
     output_dir.mkdir(parents=True, exist_ok=True)
     prompt = build_generation_prompt(args.task, scene_state)
@@ -36,6 +56,11 @@ def main() -> None:
     if _str_to_bool(args.dry_run):
         (output_dir / "dry_run_prompt.txt").write_text(prompt, encoding="utf-8")
         print(f"[INFO] Dry-run prompt written to: {(output_dir / 'dry_run_prompt.txt').resolve()}")
+        if experiment_run is not None:
+            experiment_run.update_manifest(
+                "vlm_outputs",
+                {"dry_run_prompt": (output_dir / "dry_run_prompt.txt").as_posix()},
+            )
         return
 
     model, processor = load_qwen3vl_model(config)
@@ -60,6 +85,17 @@ def main() -> None:
         raise RuntimeError(f"Failed to parse VLM output: {parse_result.error}")
     if _str_to_bool(args.validate) and not validation_report.get("valid"):
         raise RuntimeError(f"Generated blueprint failed validation: {validation_report.get('errors')}")
+
+    if experiment_run is not None:
+        experiment_run.update_manifest(
+            "vlm_outputs",
+            {
+                "raw_response": (output_dir / "raw_response.txt").as_posix(),
+                "parsed_blueprint": (output_dir / "parsed_blueprint.json").as_posix(),
+                "validation_report": (output_dir / "validation_report.json").as_posix(),
+                "generated_blueprint": output_json.as_posix(),
+            },
+        )
 
 
 def build_generation_prompt(task: str, scene_state: dict[str, Any]) -> str:

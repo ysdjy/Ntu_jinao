@@ -16,17 +16,9 @@ from pathlib import Path
 import sys
 
 
-def _bootstrap_repo_source_paths() -> None:
-    """Allow running this standalone script before editable-installing Isaac Lab."""
+from bootstrap_paths import bootstrap_isaaclab_paths
 
-    repo_root = Path(__file__).resolve().parents[3]
-    for package_dir in ("isaaclab", "isaaclab_assets", "isaaclab_tasks"):
-        source_path = repo_root / "source" / package_dir
-        if source_path.exists() and source_path.as_posix() not in sys.path:
-            sys.path.insert(0, source_path.as_posix())
-
-
-_bootstrap_repo_source_paths()
+bootstrap_isaaclab_paths(__file__)
 
 from isaaclab.app import AppLauncher
 
