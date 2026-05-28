@@ -23,7 +23,6 @@ from isaaclab_assets import FRANKA_PANDA_CFG
 from .commands import PositionReachCommandCfg
 from .markers import TARGET_MARKER_CFG
 from . import position_reach_mdp as mdp
-from .utils import STAGE1_SUCCESS_THRESHOLD
 
 
 @configclass
@@ -59,15 +58,15 @@ class CommandsCfg:
     ee_pose = PositionReachCommandCfg(
         asset_name="robot",
         body_name="panda_hand",
-        resampling_time_range=(4.0, 4.0),  # higher target diversity, similar to official reach
+        resampling_time_range=(12.0, 12.0),  # episode-level command for stable tolerance-conditioned learning
         debug_vis=False,  # reduce training overhead; can be enabled for debug runs
         ranges=PositionReachCommandCfg.Ranges(
             pos_x=(0.35, 0.65),
             pos_y=(-0.30, 0.30),
             pos_z=(0.20, 0.55),
-            roll=(0.0, 0.0),
-            pitch=(0.0, 0.0),
-            yaw=(0.0, 0.0),
+            roll=(-0.6, 0.6),
+            pitch=(-0.6, 0.6),
+            yaw=(-1.0, 1.0),
         ),
         goal_pose_visualizer_cfg=TARGET_MARKER_CFG,
         current_pose_visualizer_cfg=TARGET_MARKER_CFG.replace(prim_path="/Visuals/CerebellumRL/current"),
@@ -138,7 +137,6 @@ class TerminationsCfg:
     success = DoneTerm(
         func=mdp.position_success,
         params={
-            "threshold": STAGE1_SUCCESS_THRESHOLD,
             "asset_cfg": SceneEntityCfg("robot", joint_names=["panda_joint.*"]),
             "command_name": "ee_pose",
         },

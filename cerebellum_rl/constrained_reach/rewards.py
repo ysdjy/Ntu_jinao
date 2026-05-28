@@ -7,8 +7,14 @@ import torch
 from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
 
-from .utils import STAGE1_SUCCESS_THRESHOLD, get_ee_and_target_position_env, get_joint_limit_terms
-
+from .utils import (
+    get_ee_and_target_orientation,
+    get_ee_and_target_position_env,
+    get_joint_limit_terms,
+    get_stage1_orientation_tolerance,
+    get_stage1_position_tolerance,
+    quat_to_axis_angle_error,
+)
 
 
 def stage1_position_reach_reward(
@@ -16,19 +22,46 @@ def stage1_position_reach_reward(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     command_name: str = "ee_pose",
 ) -> torch.Tensor:
-    """Exact reward formula requested for Stage 1.1."""
+    """Stage 1.2A tolerance-conditioned pose reach reward."""
     robot: Articulation = env.scene[asset_cfg.name]
     joint_ids = asset_cfg.joint_ids
 
     ee_position, target_position = get_ee_and_target_position_env(env, asset_cfg, command_name)
+    ee_quat, target_quat = get_ee_and_target_orientation(env, asset_cfg, command_name)
+    pos_tol_xyz = get_stage1_position_tolerance(env)
+    ori_tol_xyz = get_stage1_orientation_tolerance(env)
+
     pos_error_vec = target_position - ee_position
     pos_error = torch.norm(pos_error_vec, dim=1)
 
-    # Stage 1.1A: shape reward for coarse position convergence.
-    r_pos = torch.exp(-5.0 * pos_error)
-    r_dist = -2.0 * pos_error
-    r_success = torch.where(
-        pos_error < STAGE1_SUCCESS_THRESHOLD,
+    eps = 1e-6
+    normalized_pos_error_vec = pos_error_vec / torch.clamp(pos_tol_xyz, min=eps)
+    normalized_pos_error = torch.norm(normalized_pos_error_vec, dim=1)
+
+    pos_success = normalized_pos_error < 1.0
+
+    orientation_error_vec, orientation_angle_error = quat_to_axis_angle_error(ee_quat, target_quat)
+    ori_tol_scalar = torch.clamp(ori_tol_xyz[:, 0], min=eps)
+    normalized_ori_error = orientation_angle_error / ori_tol_scalar
+    ori_success = normalized_ori_error < 1.0
+    pose_success = pos_success & ori_success
+
+    r_pos = torch.exp(-2.0 * normalized_pos_error)
+    r_dist = -0.5 * normalized_pos_error
+    r_pos_success = torch.where(
+        pos_success,
+        torch.full_like(pos_error, 3.0),
+        torch.zeros_like(pos_error),
+    )
+    r_ori = torch.exp(-2.0 * normalized_ori_error)
+    r_ori_dist = -0.25 * normalized_ori_error
+    r_ori_success = torch.where(
+        ori_success,
+        torch.full_like(normalized_ori_error, 3.0),
+        torch.zeros_like(normalized_ori_error),
+    )
+    r_pose_success = torch.where(
+        pose_success,
         torch.full_like(pos_error, 10.0),
         torch.zeros_like(pos_error),
     )
@@ -50,35 +83,66 @@ def stage1_position_reach_reward(
     limit_violation = torch.relu(margin_threshold - joint_limit_margin)
     r_limit = -0.05 * torch.mean(torch.square(limit_violation), dim=1)
 
-    # Per-env progress reward cache.
     if (
-        not hasattr(env, "stage1_prev_pos_error")
-        or env.stage1_prev_pos_error is None
-        or env.stage1_prev_pos_error.shape != pos_error.shape
+        not hasattr(env, "stage1_prev_normalized_pos_error")
+        or env.stage1_prev_normalized_pos_error is None
+        or env.stage1_prev_normalized_pos_error.shape != normalized_pos_error.shape
     ):
-        env.stage1_prev_pos_error = pos_error.detach().clone()
+        env.stage1_prev_normalized_pos_error = normalized_pos_error.detach().clone()
     reset_mask = env.episode_length_buf == 0
-    env.stage1_prev_pos_error[reset_mask] = pos_error.detach()[reset_mask]
-    progress = env.stage1_prev_pos_error - pos_error.detach()
-    progress = torch.clamp(progress, -0.05, 0.05)
-    r_progress = 5.0 * progress
-    env.stage1_prev_pos_error = pos_error.detach().clone()
+    env.stage1_prev_normalized_pos_error[reset_mask] = normalized_pos_error.detach()[reset_mask]
+    pos_progress = env.stage1_prev_normalized_pos_error - normalized_pos_error.detach()
+    pos_progress = torch.clamp(pos_progress, -0.5, 0.5)
+    r_pos_progress = 1.0 * pos_progress
+    env.stage1_prev_normalized_pos_error = normalized_pos_error.detach().clone()
 
-    reward = 2.0 * r_pos + 1.0 * r_dist + r_success + r_progress + r_action + r_smooth + r_dq + r_limit
+    if (
+        not hasattr(env, "stage1_prev_normalized_ori_error")
+        or env.stage1_prev_normalized_ori_error is None
+        or env.stage1_prev_normalized_ori_error.shape != normalized_ori_error.shape
+    ):
+        env.stage1_prev_normalized_ori_error = normalized_ori_error.detach().clone()
+    env.stage1_prev_normalized_ori_error[reset_mask] = normalized_ori_error.detach()[reset_mask]
+    ori_progress = env.stage1_prev_normalized_ori_error - normalized_ori_error.detach()
+    ori_progress = torch.clamp(ori_progress, -0.5, 0.5)
+    r_ori_progress = 0.5 * ori_progress
+    env.stage1_prev_normalized_ori_error = normalized_ori_error.detach().clone()
 
-    # Stage-1 monitoring metrics for training logs.
+    reward = (
+        2.0 * r_pos
+        + 1.0 * r_dist
+        + r_pos_progress
+        + r_pos_success
+        + 1.0 * r_ori
+        + 1.0 * r_ori_dist
+        + r_ori_progress
+        + r_ori_success
+        + r_pose_success
+        + r_action
+        + r_smooth
+        + r_dq
+        + r_limit
+    )
+
     if not hasattr(env, "extras") or env.extras is None:
         env.extras = {}
     if "log" not in env.extras:
         env.extras["log"] = {}
     env.extras["log"]["stage1/mean_position_error"] = pos_error.mean()
-    env.extras["log"]["stage1/success_rate"] = (pos_error < STAGE1_SUCCESS_THRESHOLD).float().mean()
-    env.extras["log"]["stage1/progress_reward_mean"] = r_progress.mean()
-    env.extras["log"]["stage1/success_threshold"] = torch.tensor(STAGE1_SUCCESS_THRESHOLD, device=pos_error.device)
+    env.extras["log"]["stage1/mean_position_tolerance"] = pos_tol_xyz[:, 0].mean()
+    env.extras["log"]["stage1/mean_normalized_position_error"] = normalized_pos_error.mean()
+    env.extras["log"]["stage1/position_success_rate"] = pos_success.float().mean()
+    env.extras["log"]["stage1/mean_orientation_error"] = orientation_angle_error.mean()
+    env.extras["log"]["stage1/mean_orientation_tolerance"] = ori_tol_scalar.mean()
+    env.extras["log"]["stage1/mean_normalized_orientation_error"] = normalized_ori_error.mean()
+    env.extras["log"]["stage1/orientation_success_rate"] = ori_success.float().mean()
+    env.extras["log"]["stage1/pose_success_rate"] = pose_success.float().mean()
+    env.extras["log"]["stage1/success_rate"] = pose_success.float().mean()
+    env.extras["log"]["stage1/position_progress_reward_mean"] = r_pos_progress.mean()
+    env.extras["log"]["stage1/orientation_progress_reward_mean"] = r_ori_progress.mean()
     env.extras["log"]["stage1/mean_action_magnitude"] = torch.mean(torch.abs(action))
     env.extras["log"]["stage1/mean_action_smoothness"] = torch.mean(torch.square(action - prev_action))
     env.extras["log"]["stage1/mean_joint_velocity"] = torch.mean(torch.abs(dq))
     env.extras["log"]["stage1/mean_joint_limit_margin"] = joint_limit_margin.mean()
 
     return reward
-

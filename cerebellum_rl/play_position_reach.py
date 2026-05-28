@@ -102,7 +102,10 @@ from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper  # noqa: E
 from isaaclab_tasks.utils import get_checkpoint_path  # noqa: E402
 from isaaclab_tasks.utils.hydra import hydra_task_config  # noqa: E402
 
-from cerebellum_rl.constrained_reach.utils import STAGE1_SUCCESS_THRESHOLD, get_ee_and_target_position_env  # noqa: E402
+from cerebellum_rl.constrained_reach.utils import (  # noqa: E402
+    get_ee_and_target_position_env,
+    get_stage1_position_tolerance,
+)
 
 
 @hydra_task_config(args_cli.task, args_cli.agent)
@@ -141,20 +144,30 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
     robot_cfg = SceneEntityCfg("robot", joint_names=["panda_joint.*"])
     command_name = "ee_pose"
 
+    def _tolerance_success_mask(base_env) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        ee_pos, target_pos = get_ee_and_target_position_env(base_env, robot_cfg, command_name)
+        pos_tol = get_stage1_position_tolerance(base_env)
+        pos_error_vec = target_pos - ee_pos
+        pos_error = torch.norm(pos_error_vec, dim=1)
+        norm_err = torch.norm(pos_error_vec / torch.clamp(pos_tol, min=1e-6), dim=1)
+        return pos_error, norm_err, norm_err < 1.0
+
     def _print_play_metrics(tag: str) -> None:
         base_env = env.unwrapped
-        ee_pos, target_pos = get_ee_and_target_position_env(base_env, robot_cfg, command_name)
-        pos_error = torch.norm(target_pos - ee_pos, dim=1)
-        success_mask = pos_error < STAGE1_SUCCESS_THRESHOLD
+        pos_error, norm_err, success_mask = _tolerance_success_mask(base_env)
+        pos_tol = get_stage1_position_tolerance(base_env)
         success_rate = success_mask.float().mean().item()
         mean_pos_error = pos_error.mean().item()
+        mean_tol = pos_tol[:, 0].mean().item()
         print(
             f"[PLAY][{tag}] mean_position_error={mean_pos_error:.4f} m | "
-            f"success_rate@{STAGE1_SUCCESS_THRESHOLD:.2f}m={success_rate:.4f} | "
+            f"mean_position_tolerance={mean_tol:.4f} m | "
+            f"mean_normalized_error={norm_err.mean().item():.4f} | "
+            f"tolerance_success_rate={success_rate:.4f} | "
             f"episodes={episode_count} | episode_success_rate={episode_success_count / max(episode_count, 1):.4f}"
         )
 
-    print(f"[INFO] Play success threshold = {STAGE1_SUCCESS_THRESHOLD:.2f} m")
+    print("[INFO] Play success criterion: normalized_position_error < 1.0 (dynamic tolerance)")
     while simulation_app.is_running():
         start = time.time()
         with torch.inference_mode():
@@ -164,15 +177,18 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
 
         if steps == 1 or (args_cli.log_interval > 0 and steps % args_cli.log_interval == 0):
             if "log" in extras and "stage1/mean_position_error" in extras["log"]:
-                mean_err = extras["log"]["stage1/mean_position_error"]
-                succ = extras["log"].get("stage1/success_rate", None)
-                if isinstance(mean_err, torch.Tensor):
-                    mean_err = mean_err.item()
-                if isinstance(succ, torch.Tensor):
-                    succ = succ.item()
+                def _scalar(x):
+                    return x.item() if isinstance(x, torch.Tensor) else x
+
+                mean_err = _scalar(extras["log"]["stage1/mean_position_error"])
+                mean_tol = _scalar(extras["log"].get("stage1/mean_position_tolerance", 0.0))
+                norm_err = _scalar(extras["log"].get("stage1/mean_normalized_position_error", 0.0))
+                succ = _scalar(extras["log"].get("stage1/success_rate", 0.0))
                 print(
                     f"[PLAY][step {steps}] mean_position_error={mean_err:.4f} m | "
-                    f"success_rate@{STAGE1_SUCCESS_THRESHOLD:.2f}m={succ:.4f}"
+                    f"mean_position_tolerance={mean_tol:.4f} m | "
+                    f"mean_normalized_error={norm_err:.4f} | "
+                    f"tolerance_success_rate={succ:.4f}"
                 )
             else:
                 _print_play_metrics(f"step {steps}")
@@ -180,11 +196,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
         done_ids = (dones > 0).nonzero(as_tuple=False).squeeze(-1)
         if done_ids.numel() > 0:
             base_env = env.unwrapped
-            ee_pos, target_pos = get_ee_and_target_position_env(base_env, robot_cfg, command_name)
-            pos_error = torch.norm(target_pos - ee_pos, dim=1)
+            _, _, success_mask = _tolerance_success_mask(base_env)
             for env_id in done_ids.tolist():
                 episode_count += 1
-                if pos_error[env_id] < STAGE1_SUCCESS_THRESHOLD:
+                if success_mask[env_id]:
                     episode_success_count += 1
             print(
                 f"[PLAY][episode done] env_ids={done_ids.tolist()} | "

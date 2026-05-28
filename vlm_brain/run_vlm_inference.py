@@ -65,6 +65,8 @@ def main() -> None:
 
     model, processor = load_qwen3vl_model(config)
     raw_response = generate_response(model, processor, args.image, prompt, config)
+    # Re-create output dir in case it was removed during the long generation step.
+    output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "raw_response.txt").write_text(raw_response, encoding="utf-8")
     parse_result = extract_json_from_text(raw_response)
     if parse_result.extracted_text:

@@ -7,7 +7,14 @@ import torch
 from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
 
-from .utils import get_ee_and_target_position_env, get_joint_limit_terms
+from .utils import (
+    get_ee_and_target_orientation,
+    get_ee_and_target_position_env,
+    get_joint_limit_terms,
+    get_stage1_orientation_tolerance,
+    get_stage1_position_tolerance,
+    quat_to_axis_angle_error,
+)
 
 
 def constrained_reach_obs(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
@@ -33,22 +40,24 @@ def constrained_reach_obs(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot
 
     # B) ee current state (13)
     ee_position, target_position = get_ee_and_target_position_env(env, asset_cfg, "ee_pose")
-    ee_orientation = torch.zeros(env.num_envs, 4, device=env.device)  # 4 (placeholder)
+    ee_quat_w, target_quat_w = get_ee_and_target_orientation(env, asset_cfg, "ee_pose")
+    ee_orientation = torch.nn.functional.normalize(ee_quat_w, dim=1)
     ee_linear_velocity = torch.zeros(env.num_envs, 3, device=env.device)  # 3 (placeholder)
     ee_angular_velocity = torch.zeros(env.num_envs, 3, device=env.device)  # 3 (placeholder)
 
     # C) target pose/vel/error (25)
-    target_orientation = torch.zeros(env.num_envs, 4, device=env.device)  # 4
+    target_orientation = torch.nn.functional.normalize(target_quat_w, dim=1)
     target_linear_velocity = torch.zeros(env.num_envs, 3, device=env.device)  # 3
     target_angular_velocity = torch.zeros(env.num_envs, 3, device=env.device)  # 3
     position_error = target_position - ee_position  # 3
-    orientation_error = torch.zeros(env.num_envs, 3, device=env.device)  # 3
+    orientation_error, _ = quat_to_axis_angle_error(ee_orientation, target_orientation)
+    orientation_error = torch.clamp(orientation_error, -3.14, 3.14)
     linear_velocity_error = torch.zeros(env.num_envs, 3, device=env.device)  # 3
     angular_velocity_error = torch.zeros(env.num_envs, 3, device=env.device)  # 3
 
     # D) tolerance constraints (12)
-    pos_tol = torch.full((env.num_envs, 3), 0.03, device=env.device)
-    ori_tol = torch.zeros(env.num_envs, 3, device=env.device)
+    pos_tol = get_stage1_position_tolerance(env)
+    ori_tol = get_stage1_orientation_tolerance(env)
     lin_vel_tol = torch.zeros(env.num_envs, 3, device=env.device)
     ang_vel_tol = torch.zeros(env.num_envs, 3, device=env.device)
 
