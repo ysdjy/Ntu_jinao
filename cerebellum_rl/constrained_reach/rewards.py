@@ -8,12 +8,11 @@ from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
 
 from .utils import (
-    get_ee_and_target_orientation,
+    get_stage1_orientation_error_official,
     get_ee_and_target_position_env,
     get_joint_limit_terms,
     get_stage1_orientation_tolerance,
     get_stage1_position_tolerance,
-    quat_to_axis_angle_error,
 )
 
 
@@ -27,7 +26,6 @@ def stage1_position_reach_reward(
     joint_ids = asset_cfg.joint_ids
 
     ee_position, target_position = get_ee_and_target_position_env(env, asset_cfg, command_name)
-    ee_quat, target_quat = get_ee_and_target_orientation(env, asset_cfg, command_name)
     pos_tol_xyz = get_stage1_position_tolerance(env)
     ori_tol_xyz = get_stage1_orientation_tolerance(env)
 
@@ -40,7 +38,7 @@ def stage1_position_reach_reward(
 
     pos_success = normalized_pos_error < 1.0
 
-    orientation_error_vec, orientation_angle_error = quat_to_axis_angle_error(ee_quat, target_quat)
+    orientation_angle_error, _, _ = get_stage1_orientation_error_official(env, asset_cfg, command_name)
     ori_tol_scalar = torch.clamp(ori_tol_xyz[:, 0], min=eps)
     normalized_ori_error = orientation_angle_error / ori_tol_scalar
     ori_success = normalized_ori_error < 1.0
@@ -53,8 +51,8 @@ def stage1_position_reach_reward(
         torch.full_like(pos_error, 3.0),
         torch.zeros_like(pos_error),
     )
-    r_ori = torch.exp(-2.0 * normalized_ori_error)
-    r_ori_dist = -0.25 * normalized_ori_error
+    r_ori = 1.0 / (1.0 + normalized_ori_error)
+    r_ori_dist = -0.2 * normalized_ori_error
     r_ori_success = torch.where(
         ori_success,
         torch.full_like(normalized_ori_error, 3.0),
@@ -105,7 +103,7 @@ def stage1_position_reach_reward(
     env.stage1_prev_normalized_ori_error[reset_mask] = normalized_ori_error.detach()[reset_mask]
     ori_progress = env.stage1_prev_normalized_ori_error - normalized_ori_error.detach()
     ori_progress = torch.clamp(ori_progress, -0.5, 0.5)
-    r_ori_progress = 0.5 * ori_progress
+    r_ori_progress = 1.0 * ori_progress
     env.stage1_prev_normalized_ori_error = normalized_ori_error.detach().clone()
 
     reward = (

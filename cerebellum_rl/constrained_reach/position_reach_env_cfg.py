@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import MISSING
 
 import isaaclab.sim as sim_utils
@@ -64,9 +65,9 @@ class CommandsCfg:
             pos_x=(0.35, 0.65),
             pos_y=(-0.30, 0.30),
             pos_z=(0.20, 0.55),
-            roll=(-0.6, 0.6),
-            pitch=(-0.6, 0.6),
-            yaw=(-1.0, 1.0),
+            roll=(0.0, 0.0),
+            pitch=(math.pi, math.pi),
+            yaw=(-0.5, 0.5),
         ),
         goal_pose_visualizer_cfg=TARGET_MARKER_CFG,
         current_pose_visualizer_cfg=TARGET_MARKER_CFG.replace(prim_path="/Visuals/CerebellumRL/current"),
@@ -134,13 +135,6 @@ class TerminationsCfg:
     """Termination terms."""
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    success = DoneTerm(
-        func=mdp.position_success,
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=["panda_joint.*"]),
-            "command_name": "ee_pose",
-        },
-    )
     safety_abort = DoneTerm(
         func=mdp.nan_or_inf_abort,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["panda_joint.*"])},

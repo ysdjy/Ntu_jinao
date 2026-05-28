@@ -6,6 +6,7 @@ import torch
 
 from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
+from isaaclab.utils.math import quat_error_magnitude, quat_mul
 
 # Legacy constant; Stage 1.1B uses per-episode sampled position_tolerance instead.
 STAGE1_SUCCESS_THRESHOLD = 0.08
@@ -13,8 +14,8 @@ STAGE1_SUCCESS_THRESHOLD = 0.08
 STAGE1_POS_TOL_MIN = 0.05
 STAGE1_POS_TOL_MAX = 0.10
 
-STAGE1_ORI_TOL_MIN = 0.30
-STAGE1_ORI_TOL_MAX = 0.70
+STAGE1_ORI_TOL_MIN = 0.80
+STAGE1_ORI_TOL_MAX = 1.20
 
 
 def get_stage1_position_tolerance(env) -> torch.Tensor:
@@ -98,6 +99,20 @@ def get_ee_and_target_orientation(env, asset_cfg: SceneEntityCfg, command_name: 
     ee_quat_w = robot.data.body_quat_w[:, hand_id]
     target_quat_w = env.command_manager.get_term(command_name).pose_command_w[:, 3:7]
     return ee_quat_w, target_quat_w
+
+
+def get_stage1_orientation_error_official(
+    env, asset_cfg: SceneEntityCfg, command_name: str
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Compute orientation error with Isaac Lab official reach-style quaternion logic."""
+    robot: Articulation = env.scene[asset_cfg.name]
+    hand_id = robot.find_bodies("panda_hand")[0][0]
+    command = env.command_manager.get_command(command_name)
+    des_quat_b = command[:, 3:7]
+    des_quat_w = quat_mul(robot.data.root_quat_w, des_quat_b)
+    curr_quat_w = robot.data.body_quat_w[:, hand_id]
+    orientation_angle_error = quat_error_magnitude(curr_quat_w, des_quat_w)
+    return orientation_angle_error, curr_quat_w, des_quat_w
 
 
 def quat_to_axis_angle_error(current_quat: torch.Tensor, target_quat: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
