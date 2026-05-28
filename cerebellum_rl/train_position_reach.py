@@ -102,6 +102,9 @@ torch.backends.cudnn.benchmark = False
 
 @hydra_task_config(args_cli.task, args_cli.agent)
 def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
+    # Import after SimulationApp initialization to satisfy Isaac Sim import ordering.
+    from cerebellum_rl.constrained_reach.training_report import TrainingReportWriter
+
     agent_cfg = update_rsl_rl_cfg(agent_cfg, args_cli)
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     agent_cfg.max_iterations = args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
@@ -147,6 +150,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
 
     start_time = time.time()
+    report_writer = TrainingReportWriter(log_dir=log_dir, interval_s=60.0)
+    report_writer.start()
     env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
     if agent_cfg.class_name == "OnPolicyRunner":
         runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
@@ -160,11 +165,18 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
         runner.load(resume_path)
 
-    dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
-    dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
-    runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
-    print(f"Training time: {round(time.time() - start_time, 2)} seconds")
-    env.close()
+    try:
+        dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
+        dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
+        runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
+        print(f"Training time: {round(time.time() - start_time, 2)} seconds")
+    finally:
+        try:
+            report_writer.flush_once()
+        except Exception as exc:
+            print(f"[WARN] Final training report flush failed: {exc}")
+        report_writer.stop()
+        env.close()
 
 
 if __name__ == "__main__":

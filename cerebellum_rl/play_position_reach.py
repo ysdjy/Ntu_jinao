@@ -104,6 +104,8 @@ from isaaclab_tasks.utils.hydra import hydra_task_config  # noqa: E402
 
 from cerebellum_rl.constrained_reach.utils import (  # noqa: E402
     get_ee_and_target_position_env,
+    get_stage1_orientation_terms,
+    get_stage1_orientation_tolerance,
     get_stage1_position_tolerance,
 )
 
@@ -144,30 +146,59 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
     robot_cfg = SceneEntityCfg("robot", joint_names=["panda_joint.*"])
     command_name = "ee_pose"
 
-    def _tolerance_success_mask(base_env) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _tolerance_success_mask(base_env) -> tuple[torch.Tensor, ...]:
         ee_pos, target_pos = get_ee_and_target_position_env(base_env, robot_cfg, command_name)
         pos_tol = get_stage1_position_tolerance(base_env)
         pos_error_vec = target_pos - ee_pos
         pos_error = torch.norm(pos_error_vec, dim=1)
-        norm_err = torch.norm(pos_error_vec / torch.clamp(pos_tol, min=1e-6), dim=1)
-        return pos_error, norm_err, norm_err < 1.0
+        normalized_pos_error = torch.norm(pos_error_vec / torch.clamp(pos_tol, min=1e-6), dim=1)
+        _, orientation_error, _, _, quat_dot_abs = get_stage1_orientation_terms(base_env, robot_cfg, command_name)
+        ori_tol = get_stage1_orientation_tolerance(base_env)
+        normalized_ori_error = orientation_error / torch.clamp(ori_tol[:, 0], min=1e-6)
+        position_success = normalized_pos_error < 1.0
+        orientation_success = normalized_ori_error < 1.0
+        pose_success = position_success & orientation_success
+        return (
+            pos_error,
+            normalized_pos_error,
+            position_success,
+            orientation_error,
+            normalized_ori_error,
+            orientation_success,
+            pose_success,
+            quat_dot_abs,
+        )
 
     def _print_play_metrics(tag: str) -> None:
         base_env = env.unwrapped
-        pos_error, norm_err, success_mask = _tolerance_success_mask(base_env)
+        (
+            pos_error,
+            normalized_pos_error,
+            position_success,
+            orientation_error,
+            normalized_ori_error,
+            orientation_success,
+            pose_success,
+            quat_dot_abs,
+        ) = _tolerance_success_mask(base_env)
         pos_tol = get_stage1_position_tolerance(base_env)
-        success_rate = success_mask.float().mean().item()
         mean_pos_error = pos_error.mean().item()
         mean_tol = pos_tol[:, 0].mean().item()
         print(
             f"[PLAY][{tag}] mean_position_error={mean_pos_error:.4f} m | "
             f"mean_position_tolerance={mean_tol:.4f} m | "
-            f"mean_normalized_error={norm_err.mean().item():.4f} | "
-            f"tolerance_success_rate={success_rate:.4f} | "
+            f"mean_normalized_position_error={normalized_pos_error.mean().item():.4f} | "
+            f"position_success_rate={position_success.float().mean().item():.4f} | "
+            f"mean_orientation_error={orientation_error.mean().item():.4f} rad | "
+            f"mean_normalized_orientation_error={normalized_ori_error.mean().item():.4f} | "
+            f"orientation_success_rate={orientation_success.float().mean().item():.4f} | "
+            f"pose_success_rate={pose_success.float().mean().item():.4f} | "
+            f"mean_quat_dot_abs={quat_dot_abs.mean().item():.4f} | "
+            f"min_quat_dot_abs={quat_dot_abs.min().item():.4f} | "
             f"episodes={episode_count} | episode_success_rate={episode_success_count / max(episode_count, 1):.4f}"
         )
 
-    print("[INFO] Play success criterion: normalized_position_error < 1.0 (dynamic tolerance)")
+    print("[INFO] Play success criterion: normalized_position_error < 1.0 and normalized_orientation_error < 1.0")
     while simulation_app.is_running():
         start = time.time()
         with torch.inference_mode():
@@ -183,12 +214,24 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
                 mean_err = _scalar(extras["log"]["stage1/mean_position_error"])
                 mean_tol = _scalar(extras["log"].get("stage1/mean_position_tolerance", 0.0))
                 norm_err = _scalar(extras["log"].get("stage1/mean_normalized_position_error", 0.0))
-                succ = _scalar(extras["log"].get("stage1/success_rate", 0.0))
+                pos_succ = _scalar(extras["log"].get("stage1/position_success_rate", 0.0))
+                ori_err = _scalar(extras["log"].get("stage1/mean_orientation_error", 0.0))
+                norm_ori_err = _scalar(extras["log"].get("stage1/mean_normalized_orientation_error", 0.0))
+                ori_succ = _scalar(extras["log"].get("stage1/orientation_success_rate", 0.0))
+                pose_succ = _scalar(extras["log"].get("stage1/pose_success_rate", 0.0))
+                quat_dot_mean = _scalar(extras["log"].get("stage1/mean_quat_dot_abs", 0.0))
+                quat_dot_min = _scalar(extras["log"].get("stage1/min_quat_dot_abs", 0.0))
                 print(
                     f"[PLAY][step {steps}] mean_position_error={mean_err:.4f} m | "
                     f"mean_position_tolerance={mean_tol:.4f} m | "
-                    f"mean_normalized_error={norm_err:.4f} | "
-                    f"tolerance_success_rate={succ:.4f}"
+                    f"mean_normalized_position_error={norm_err:.4f} | "
+                    f"position_success_rate={pos_succ:.4f} | "
+                    f"mean_orientation_error={ori_err:.4f} rad | "
+                    f"mean_normalized_orientation_error={norm_ori_err:.4f} | "
+                    f"orientation_success_rate={ori_succ:.4f} | "
+                    f"pose_success_rate={pose_succ:.4f} | "
+                    f"mean_quat_dot_abs={quat_dot_mean:.4f} | "
+                    f"min_quat_dot_abs={quat_dot_min:.4f}"
                 )
             else:
                 _print_play_metrics(f"step {steps}")
@@ -196,10 +239,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
         done_ids = (dones > 0).nonzero(as_tuple=False).squeeze(-1)
         if done_ids.numel() > 0:
             base_env = env.unwrapped
-            _, _, success_mask = _tolerance_success_mask(base_env)
+            _, _, _, _, _, _, pose_success, _ = _tolerance_success_mask(base_env)
             for env_id in done_ids.tolist():
                 episode_count += 1
-                if success_mask[env_id]:
+                if pose_success[env_id]:
                     episode_success_count += 1
             print(
                 f"[PLAY][episode done] env_ids={done_ids.tolist()} | "

@@ -18,6 +18,15 @@ STAGE1_ORI_TOL_MIN = 0.80
 STAGE1_ORI_TOL_MAX = 1.20
 
 
+def canonicalize_quat_largest_abs(q: torch.Tensor) -> torch.Tensor:
+    """Normalize quaternions and enforce a stable sign by largest-abs component."""
+    qn = torch.nn.functional.normalize(q, dim=1)
+    max_abs_idx = torch.argmax(torch.abs(qn), dim=1, keepdim=True)
+    largest_component = torch.gather(qn, 1, max_abs_idx)
+    sign = torch.where(largest_component < 0.0, -1.0, 1.0)
+    return qn * sign
+
+
 def get_stage1_position_tolerance(env) -> torch.Tensor:
     """Return per-env position tolerance command with shape [num_envs, 3].
 
@@ -96,8 +105,8 @@ def get_ee_and_target_orientation(env, asset_cfg: SceneEntityCfg, command_name: 
     """Return EE and target quaternions in world frame (wxyz)."""
     robot: Articulation = env.scene[asset_cfg.name]
     hand_id = robot.find_bodies("panda_hand")[0][0]
-    ee_quat_w = robot.data.body_quat_w[:, hand_id]
-    target_quat_w = env.command_manager.get_term(command_name).pose_command_w[:, 3:7]
+    ee_quat_w = canonicalize_quat_largest_abs(robot.data.body_quat_w[:, hand_id])
+    target_quat_w = canonicalize_quat_largest_abs(env.command_manager.get_term(command_name).pose_command_w[:, 3:7])
     return ee_quat_w, target_quat_w
 
 
@@ -105,14 +114,27 @@ def get_stage1_orientation_error_official(
     env, asset_cfg: SceneEntityCfg, command_name: str
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Compute orientation error with Isaac Lab official reach-style quaternion logic."""
+    angle_error, curr_quat_w, target_quat_w, _, _ = get_stage1_orientation_terms(env, asset_cfg, command_name)
+    return angle_error, curr_quat_w, target_quat_w
+
+
+def get_stage1_orientation_terms(
+    env, asset_cfg: SceneEntityCfg, command_name: str
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return unified Stage 1 orientation terms for obs/reward/termination/play."""
     robot: Articulation = env.scene[asset_cfg.name]
     hand_id = robot.find_bodies("panda_hand")[0][0]
     command = env.command_manager.get_command(command_name)
     des_quat_b = command[:, 3:7]
     des_quat_w = quat_mul(robot.data.root_quat_w, des_quat_b)
     curr_quat_w = robot.data.body_quat_w[:, hand_id]
-    orientation_angle_error = quat_error_magnitude(curr_quat_w, des_quat_w)
-    return orientation_angle_error, curr_quat_w, des_quat_w
+
+    curr_quat_w = canonicalize_quat_largest_abs(curr_quat_w)
+    des_quat_w = canonicalize_quat_largest_abs(des_quat_w)
+    axis_angle_error, angle_error = quat_to_axis_angle_error(curr_quat_w, des_quat_w)
+    quat_dot_abs = torch.abs(torch.sum(curr_quat_w * des_quat_w, dim=1))
+    quat_dot_abs = torch.clamp(quat_dot_abs, min=0.0, max=1.0)
+    return axis_angle_error, angle_error, curr_quat_w, des_quat_w, quat_dot_abs
 
 
 def quat_to_axis_angle_error(current_quat: torch.Tensor, target_quat: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -127,8 +149,8 @@ def quat_to_axis_angle_error(current_quat: torch.Tensor, target_quat: torch.Tens
         angle_error: Tensor [N], radians.
     """
     eps = 1e-8
-    current = torch.nn.functional.normalize(current_quat, dim=1)
-    target = torch.nn.functional.normalize(target_quat, dim=1)
+    current = canonicalize_quat_largest_abs(current_quat)
+    target = canonicalize_quat_largest_abs(target_quat)
 
     # q_err = q_target * conjugate(q_current)
     w1, x1, y1, z1 = target[:, 0], target[:, 1], target[:, 2], target[:, 3]

@@ -8,9 +8,9 @@ from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
 
 from .utils import (
-    get_stage1_orientation_error_official,
     get_ee_and_target_position_env,
     get_joint_limit_terms,
+    get_stage1_orientation_terms,
     get_stage1_orientation_tolerance,
     get_stage1_position_tolerance,
 )
@@ -38,7 +38,7 @@ def stage1_position_reach_reward(
 
     pos_success = normalized_pos_error < 1.0
 
-    orientation_angle_error, _, _ = get_stage1_orientation_error_official(env, asset_cfg, command_name)
+    _, orientation_angle_error, _, _, quat_dot_abs = get_stage1_orientation_terms(env, asset_cfg, command_name)
     ori_tol_scalar = torch.clamp(ori_tol_xyz[:, 0], min=eps)
     normalized_ori_error = orientation_angle_error / ori_tol_scalar
     ori_success = normalized_ori_error < 1.0
@@ -51,8 +51,8 @@ def stage1_position_reach_reward(
         torch.full_like(pos_error, 3.0),
         torch.zeros_like(pos_error),
     )
-    r_ori = 1.0 / (1.0 + normalized_ori_error)
-    r_ori_dist = -0.2 * normalized_ori_error
+    r_ori = torch.exp(-2.0 * normalized_ori_error)
+    r_ori_dist = -0.12 * normalized_ori_error
     r_ori_success = torch.where(
         ori_success,
         torch.full_like(normalized_ori_error, 3.0),
@@ -136,10 +136,11 @@ def stage1_position_reach_reward(
     env.extras["log"]["stage1/orientation_success_rate"] = ori_success.float().mean()
     env.extras["log"]["stage1/pose_success_rate"] = pose_success.float().mean()
     env.extras["log"]["stage1/success_rate"] = pose_success.float().mean()
+    env.extras["log"]["stage1/mean_quat_dot_abs"] = quat_dot_abs.mean()
+    env.extras["log"]["stage1/min_quat_dot_abs"] = quat_dot_abs.min()
     env.extras["log"]["stage1/position_progress_reward_mean"] = r_pos_progress.mean()
     env.extras["log"]["stage1/orientation_progress_reward_mean"] = r_ori_progress.mean()
     env.extras["log"]["stage1/mean_action_magnitude"] = torch.mean(torch.abs(action))
-    env.extras["log"]["stage1/mean_action_smoothness"] = torch.mean(torch.square(action - prev_action))
     env.extras["log"]["stage1/mean_joint_velocity"] = torch.mean(torch.abs(dq))
     env.extras["log"]["stage1/mean_joint_limit_margin"] = joint_limit_margin.mean()
 

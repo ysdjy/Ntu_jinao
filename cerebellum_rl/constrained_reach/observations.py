@@ -8,12 +8,12 @@ from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
 
 from .utils import (
-    get_ee_and_target_orientation,
+    canonicalize_quat_largest_abs,
     get_ee_and_target_position_env,
     get_joint_limit_terms,
+    get_stage1_orientation_terms,
     get_stage1_orientation_tolerance,
     get_stage1_position_tolerance,
-    quat_to_axis_angle_error,
 )
 
 
@@ -40,17 +40,16 @@ def constrained_reach_obs(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot
 
     # B) ee current state (13)
     ee_position, target_position = get_ee_and_target_position_env(env, asset_cfg, "ee_pose")
-    ee_quat_w, target_quat_w = get_ee_and_target_orientation(env, asset_cfg, "ee_pose")
-    ee_orientation = torch.nn.functional.normalize(ee_quat_w, dim=1)
+    orientation_error, _, ee_quat_w, target_quat_w, _ = get_stage1_orientation_terms(env, asset_cfg, "ee_pose")
+    ee_orientation = canonicalize_quat_largest_abs(ee_quat_w)
     ee_linear_velocity = torch.zeros(env.num_envs, 3, device=env.device)  # 3 (placeholder)
     ee_angular_velocity = torch.zeros(env.num_envs, 3, device=env.device)  # 3 (placeholder)
 
     # C) target pose/vel/error (25)
-    target_orientation = torch.nn.functional.normalize(target_quat_w, dim=1)
+    target_orientation = canonicalize_quat_largest_abs(target_quat_w)
     target_linear_velocity = torch.zeros(env.num_envs, 3, device=env.device)  # 3
     target_angular_velocity = torch.zeros(env.num_envs, 3, device=env.device)  # 3
     position_error = target_position - ee_position  # 3
-    orientation_error, _ = quat_to_axis_angle_error(ee_orientation, target_orientation)
     orientation_error = torch.clamp(orientation_error, -3.14, 3.14)
     linear_velocity_error = torch.zeros(env.num_envs, 3, device=env.device)  # 3
     angular_velocity_error = torch.zeros(env.num_envs, 3, device=env.device)  # 3

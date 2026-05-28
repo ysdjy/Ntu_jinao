@@ -81,7 +81,7 @@ class ActionsCfg:
     arm_action: ActionTerm = mdp.RelativeJointPositionActionCfg(
         asset_name="robot",
         joint_names=["panda_joint.*"],
-        scale=0.05,
+        scale=0.02,
         use_zero_offset=True,
     )
 
@@ -135,6 +135,13 @@ class TerminationsCfg:
     """Termination terms."""
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    success = DoneTerm(
+        func=mdp.position_success,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=["panda_joint.*"]),
+            "command_name": "ee_pose",
+        },
+    )
     safety_abort = DoneTerm(
         func=mdp.nan_or_inf_abort,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["panda_joint.*"])},

@@ -8,8 +8,8 @@ from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
 
 from .utils import (
-    get_stage1_orientation_error_official,
     get_ee_and_target_position_env,
+    get_stage1_orientation_terms,
     get_stage1_orientation_tolerance,
     get_stage1_position_tolerance,
 )
@@ -27,7 +27,7 @@ def position_success(
     pos_tol_xyz = get_stage1_position_tolerance(env)
     pos_error_vec = target_position - ee_position
     normalized_pos_error = torch.norm(pos_error_vec / torch.clamp(pos_tol_xyz, min=1e-6), dim=1)
-    orientation_angle_error, _, _ = get_stage1_orientation_error_official(env, asset_cfg, command_name)
+    _, orientation_angle_error, _, _, _ = get_stage1_orientation_terms(env, asset_cfg, command_name)
     ori_tol_xyz = get_stage1_orientation_tolerance(env)
     ori_tol_scalar = torch.clamp(ori_tol_xyz[:, 0], min=1e-6)
     normalized_ori_error = orientation_angle_error / ori_tol_scalar
