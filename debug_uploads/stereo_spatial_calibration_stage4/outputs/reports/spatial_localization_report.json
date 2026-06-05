@@ -1,0 +1,206 @@
+[
+  {
+    "sample_id": "cube_000001",
+    "object_type": "cube",
+    "backend": "synthetic_rectified_stereo",
+    "native_capture_method": "",
+    "mask_source": "",
+    "segmentation_available": "",
+    "depth_source": "gt_depth",
+    "requested_depth_source": "gt",
+    "method": "pointcloud_median",
+    "center_camera_m": [
+      0.19846273958683014,
+      0.08778159320354462,
+      0.7633182406425476
+    ],
+    "center_world_m": [
+      0.5381389856338501,
+      0.19846273958683014,
+      0.03983723372220993
+    ],
+    "center_base_m": [
+      0.5381389856338501,
+      0.19846273958683014,
+      0.03983723372220993
+    ],
+    "center_pred_camera_m": [
+      0.19846273958683014,
+      0.08778159320354462,
+      0.7633182406425476
+    ],
+    "center_pred_world_m": [
+      0.5381389856338501,
+      0.19846273958683014,
+      0.03983723372220993
+    ],
+    "center_pred_base_m": [
+      0.5381389856338501,
+      0.19846273958683014,
+      0.03983723372220993
+    ],
+    "gt_center_world_m": [
+      0.5375286340713501,
+      0.19860689342021942,
+      0.03999999910593033
+    ],
+    "gt_center_base_m": [
+      0.5375286340713501,
+      0.19860689342021942,
+      0.03999999910593033
+    ],
+    "center_gt_world_m": [
+      0.5375286340713501,
+      0.19860689342021942,
+      0.03999999910593033
+    ],
+    "error_x_m": 0.0006103515625,
+    "error_y_m": -0.00014415383338928223,
+    "error_z_m": -0.00016276538372039795,
+    "error_l2_m": 0.0006479212315753102,
+    "error_l2_mm": 0.6479212315753102,
+    "mask_point_count": 4624,
+    "center_pixel_u": 475.5,
+    "center_pixel_v": 308.5,
+    "foundation_stereo_runtime_ms": 0.0,
+    "depth_mae_m": 0.0,
+    "depth_rmse_m": 0.0,
+    "valid_depth_ratio": 1.0
+  },
+  {
+    "sample_id": "cylinder_000001",
+    "object_type": "cylinder",
+    "backend": "synthetic_rectified_stereo",
+    "native_capture_method": "",
+    "mask_source": "",
+    "segmentation_available": "",
+    "depth_source": "gt_depth",
+    "requested_depth_source": "gt",
+    "method": "pointcloud_median",
+    "center_camera_m": [
+      0.18650920689105988,
+      -0.012177577242255211,
+      0.7691101431846619
+    ],
+    "center_world_m": [
+      0.44006261229515076,
+      0.18650920689105988,
+      0.05999663844704628
+    ],
+    "center_base_m": [
+      0.44006261229515076,
+      0.18650920689105988,
+      0.05999663844704628
+    ],
+    "center_pred_camera_m": [
+      0.18650920689105988,
+      -0.012177577242255211,
+      0.7691101431846619
+    ],
+    "center_pred_world_m": [
+      0.44006261229515076,
+      0.18650920689105988,
+      0.05999663844704628
+    ],
+    "center_pred_base_m": [
+      0.44006261229515076,
+      0.18650920689105988,
+      0.05999663844704628
+    ],
+    "gt_center_world_m": [
+      0.4400498867034912,
+      0.18677672743797302,
+      0.05999999865889549
+    ],
+    "gt_center_base_m": [
+      0.4400498867034912,
+      0.18677672743797302,
+      0.05999999865889549
+    ],
+    "center_gt_world_m": [
+      0.4400498867034912,
+      0.18677672743797302,
+      0.05999999865889549
+    ],
+    "error_x_m": 1.2725591659545898e-05,
+    "error_y_m": -0.00026752054691314697,
+    "error_z_m": -3.3602118492126465e-06,
+    "error_l2_m": 0.00026784412330016494,
+    "error_l2_mm": 0.26784412330016494,
+    "mask_point_count": 3706,
+    "center_pixel_u": 465.0,
+    "center_pixel_v": 230.0,
+    "foundation_stereo_runtime_ms": 0.0,
+    "depth_mae_m": 0.0,
+    "depth_rmse_m": 0.0,
+    "valid_depth_ratio": 1.0
+  },
+  {
+    "sample_id": "sphere_000001",
+    "object_type": "sphere",
+    "backend": "synthetic_rectified_stereo",
+    "native_capture_method": "",
+    "mask_source": "",
+    "segmentation_available": "",
+    "depth_source": "gt_depth",
+    "requested_depth_source": "gt",
+    "method": "pointcloud_median",
+    "center_camera_m": [
+      -0.13718119263648987,
+      0.13091720640659332,
+      0.7516777515411377
+    ],
+    "center_world_m": [
+      0.5828174948692322,
+      -0.13718119263648987,
+      0.039970241487026215
+    ],
+    "center_base_m": [
+      0.5828174948692322,
+      -0.13718119263648987,
+      0.039970241487026215
+    ],
+    "center_pred_camera_m": [
+      -0.13718119263648987,
+      0.13091720640659332,
+      0.7516777515411377
+    ],
+    "center_pred_world_m": [
+      0.5828174948692322,
+      -0.13718119263648987,
+      0.039970241487026215
+    ],
+    "center_pred_base_m": [
+      0.5828174948692322,
+      -0.13718119263648987,
+      0.039970241487026215
+    ],
+    "gt_center_world_m": [
+      0.5827057361602783,
+      -0.1373964101076126,
+      0.03999999910593033
+    ],
+    "gt_center_base_m": [
+      0.5827057361602783,
+      -0.1373964101076126,
+      0.03999999910593033
+    ],
+    "center_gt_world_m": [
+      0.5827057361602783,
+      -0.1373964101076126,
+      0.03999999910593033
+    ],
+    "error_x_m": 0.00011175870895385742,
+    "error_y_m": 0.0002152174711227417,
+    "error_z_m": -2.975761890411377e-05,
+    "error_l2_m": 0.00024432374630123377,
+    "error_l2_mm": 0.24432374630123377,
+    "mask_point_count": 2963,
+    "center_pixel_u": 210.0,
+    "center_pixel_v": 344.0,
+    "foundation_stereo_runtime_ms": 0.0,
+    "depth_mae_m": 0.0,
+    "depth_rmse_m": 0.0,
+    "valid_depth_ratio": 1.0
+  }
+]

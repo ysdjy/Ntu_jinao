@@ -1,0 +1,14 @@
+Stage 4 native camera capture attempted under env_isaaclab on 2026-06-05.
+
+The full terminal crash reporter output was not retained because a subsequent synthetic pipeline run cleaned outputs. The high-signal failure observed before cleanup was:
+
+camera_class:
+RuntimeError("camera_class did not produce valid RGB/depth frames: {'left_rgb_shape': [480, 640, 3], 'right_rgb_shape': [480, 640, 3], 'depth_shape': [480, 640], 'depth_valid_count': 0, 'depth_valid_ratio': 0.0, 'depth_min': None, 'depth_max': None, 'left_rgb_mean': 0.0, 'left_rgb_min': 0, 'left_rgb_max': 0}")
+
+replicator_annotator:
+RuntimeError("replicator_annotator did not produce valid RGB/depth frames: {'left_rgb_shape': [480, 640, 3], 'right_rgb_shape': [480, 640, 3], 'depth_shape': [480, 640], 'depth_valid_count': 0, 'depth_valid_ratio': 0.0, 'depth_min': None, 'depth_max': None, 'left_rgb_mean': 0.0, 'left_rgb_min': 0, 'left_rgb_max': 0}")
+
+tiled_camera:
+RuntimeError("tiled_camera route is importable but not wired to an IsaacLab interactive scene yet.")
+
+Failure boundary: render product/frame acquisition returns shaped but all-black/invalid buffers in headless Isaac Sim 5.1.

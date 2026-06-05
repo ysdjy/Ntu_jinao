@@ -1,0 +1,23 @@
+{
+  "status": "failed",
+  "native_capture_method": "auto",
+  "camera_class": {
+    "rgb_shape": [480, 640, 3],
+    "depth_shape": [480, 640],
+    "rgb_mean": 0.0,
+    "depth_valid_ratio": 0.0,
+    "status": "failed_all_black_invalid_depth"
+  },
+  "replicator_annotator": {
+    "rgb_shape": [480, 640, 3],
+    "depth_shape": [480, 640],
+    "rgb_mean": 0.0,
+    "depth_valid_ratio": 0.0,
+    "status": "failed_all_black_invalid_depth"
+  },
+  "tiled_camera": {
+    "status": "importable_not_wired"
+  },
+  "error_log": "/home1/banghai/IsaacLab/source/standalone/stereo_spatial_calibration/outputs/reports/isaac_native_backend_error.log",
+  "diagnosis": "/home1/banghai/IsaacLab/source/standalone/stereo_spatial_calibration/outputs/reports/stage4_native_failure_diagnosis.md"
+}
