@@ -1,0 +1,33 @@
+{
+  "status": "success",
+  "python": "/home1/banghai/miniconda3/envs/env_isaaclab/bin/python",
+  "conda_env": "env_isaaclab",
+  "enable_cameras": "1",
+  "frame_keys": [
+    "bounding_box_2d_tight",
+    "distance_to_camera",
+    "distance_to_image_plane",
+    "instance_id_segmentation",
+    "instance_segmentation",
+    "rendering_frame",
+    "rendering_time",
+    "rgb",
+    "semantic_segmentation"
+  ],
+  "available_segmentation_keys": [
+    "bounding_box_2d_tight",
+    "instance_id_segmentation",
+    "instance_segmentation",
+    "semantic_segmentation"
+  ],
+  "semantic_label_set_success": true,
+  "instance_ids_unique_count": 2,
+  "target_instance_id": 2,
+  "target_mask_pixel_count": 3625,
+  "mask_source": "native_instance",
+  "error": "",
+  "traceback": "",
+  "rgb_mean": 213.17250325520834,
+  "depth_valid_ratio": 1.0,
+  "sample_dir": "/home1/banghai/IsaacLab/source/standalone/stereo_spatial_calibration/outputs/debug_native_segmentation/dataset/cube_000001"
+}

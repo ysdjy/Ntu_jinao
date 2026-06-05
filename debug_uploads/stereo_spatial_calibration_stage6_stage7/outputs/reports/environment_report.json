@@ -1,0 +1,186 @@
+{
+  "current_python": {
+    "executable": "/home1/banghai/miniconda3/envs/env_isaaclab/bin/python",
+    "version": "3.11.15 (main, Mar 11 2026, 17:20:07) [GCC 14.3.0]",
+    "conda_default_env": "env_isaaclab",
+    "conda_prefix": "/home1/banghai/miniconda3/envs/env_isaaclab",
+    "sys_path": [
+      "/home1/banghai/miniconda3/envs/env_isaaclab/lib/python3.11/site-packages/isaacsim/exts/isaacsim.simulation_app/isaacsim",
+      "/home1/banghai/miniconda3/envs/env_isaaclab/lib/python3.11/site-packages/isaacsim/extsDeprecated/omni.isaac.kit",
+      "/home1/banghai/miniconda3/envs/env_isaaclab/lib/python3.11/site-packages/isaacsim/exts/isaacsim.simulation_app",
+      "/home1/banghai/miniconda3/envs/env_isaaclab/lib/python3.11/site-packages/isaacsim/kit/kernel/py",
+      "/home1/banghai/IsaacLab/source/standalone/stereo_spatial_calibration",
+      "/home1/banghai/IsaacLab/source/standalone/stereo_spatial_calibration/scripts",
+      "/home1/banghai/miniconda3/envs/env_isaaclab/lib/python311.zip",
+      "/home1/banghai/miniconda3/envs/env_isaaclab/lib/python3.11",
+      "/home1/banghai/miniconda3/envs/env_isaaclab/lib/python3.11/lib-dynload",
+      "/home1/banghai/miniconda3/envs/env_isaaclab/lib/python3.11/site-packages",
+      "/home1/banghai/miniconda3/envs/env_isaaclab/lib/python3.11/site-packages/cmeel.prefix/lib/python3.11/site-packages",
+      "/home1/banghai/miniconda3/envs/env_isaaclab/lib/python3.11/site-packages/isaacsim/kit"
+    ]
+  },
+  "modules": {
+    "torch": {
+      "available": true,
+      "version": "2.7.0+cu128"
+    },
+    "cv2": {
+      "available": true,
+      "version": "4.11.0"
+    },
+    "numpy": {
+      "available": true,
+      "version": "1.26.0"
+    },
+    "scipy": {
+      "available": true,
+      "version": "1.15.3"
+    },
+    "matplotlib": {
+      "available": true,
+      "version": "3.10.3"
+    },
+    "open3d": {
+      "available": false,
+      "error": "ModuleNotFoundError: No module named 'open3d'"
+    },
+    "yaml": {
+      "available": true,
+      "version": "6.0.2"
+    },
+    "imageio": {
+      "available": true,
+      "version": "2.37.0"
+    },
+    "omegaconf": {
+      "available": true,
+      "version": "2.3.0"
+    },
+    "isaacsim": {
+      "available": true,
+      "version": null
+    },
+    "isaaclab": {
+      "available": true,
+      "version": "0.54.2"
+    },
+    "omni": {
+      "available": true,
+      "version": null
+    },
+    "isaacsim.simulation_app": {
+      "available": true,
+      "version": null
+    }
+  },
+  "cuda": {
+    "available": true,
+    "device_index": 0,
+    "device_name": "Quadro RTX 8000",
+    "total_memory_gb": 47.267
+  },
+  "env_isaaclab_probe": {
+    "python_executable": "/home1/banghai/miniconda3/envs/env_isaaclab/bin/python",
+    "conda_default_env": "env_isaaclab",
+    "modules": {
+      "torch": {
+        "available": true,
+        "version": "2.7.0+cu128"
+      },
+      "isaacsim": {
+        "available": true,
+        "version": null
+      },
+      "isaaclab": {
+        "available": true,
+        "version": "0.54.2"
+      },
+      "omni": {
+        "available": true,
+        "version": null
+      },
+      "isaacsim.simulation_app": {
+        "available": true,
+        "version": null
+      },
+      "cv2": {
+        "available": true,
+        "version": "4.11.0"
+      },
+      "open3d": {
+        "available": false,
+        "error": "ModuleNotFoundError: No module named 'open3d'"
+      },
+      "omegaconf": {
+        "available": true,
+        "version": "2.3.0"
+      },
+      "imageio": {
+        "available": true,
+        "version": "2.37.0"
+      },
+      "scipy": {
+        "available": true,
+        "version": "1.15.3"
+      }
+    },
+    "cuda": {
+      "available": true,
+      "device_name": "Quadro RTX 8000"
+    },
+    "exists": true,
+    "returncode": 0
+  },
+  "foundation_stereo": {
+    "repo_path": "/home1/banghai/IsaacLab/third_party/FoundationStereo",
+    "repo_exists": true,
+    "checkpoint_path": null,
+    "checkpoint_exists": false,
+    "checkpoint_cfg_exists": false,
+    "expected_checkpoint_paths": [
+      "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
+      "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/11-33-40/model_best_bp2.pth"
+    ],
+    "dependencies": {
+      "torch": {
+        "available": true,
+        "version": "2.7.0+cu128"
+      },
+      "cv2": {
+        "available": true,
+        "version": "4.11.0"
+      },
+      "imageio": {
+        "available": true,
+        "version": "2.37.0"
+      },
+      "open3d": {
+        "available": false,
+        "error": "ModuleNotFoundError: No module named 'open3d'"
+      },
+      "omegaconf": {
+        "available": true,
+        "version": "2.3.0"
+      },
+      "scipy": {
+        "available": true,
+        "version": "1.15.3"
+      },
+      "numpy": {
+        "available": true,
+        "version": "1.26.0"
+      }
+    },
+    "ready": false,
+    "download_hint": "Download a FoundationStereo model folder such as 23-51-11 from the official README link and place it under third_party/FoundationStereo/pretrained_models/23-51-11/ with model_best_bp2.pth and cfg.yaml.",
+    "clone_status": null,
+    "fallback_available": true,
+    "hint": "FoundationStereo repo/checkpoint/runtime not fully ready. Use --depth_source gt or --depth_source noisy_gt for geometry-chain validation until a checkpoint is installed."
+  },
+  "python": {
+    "executable": "/home1/banghai/miniconda3/envs/env_isaaclab/bin/python",
+    "version": "3.11.15 (main, Mar 11 2026, 17:20:07) [GCC 14.3.0]",
+    "conda_default_env": "env_isaaclab"
+  },
+  "open3d_install_hint": "pip install open3d; pipeline still writes ASCII PLY and NPY without open3d."
+}

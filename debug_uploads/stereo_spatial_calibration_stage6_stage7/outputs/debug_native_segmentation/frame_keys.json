@@ -1,0 +1,91 @@
+{
+  "rendering_time": {
+    "shape": [],
+    "dtype": "float64",
+    "min": 0.6000000312924385,
+    "max": 0.6000000312924385,
+    "unique_count": 1
+  },
+  "rendering_frame": {},
+  "rgb": {
+    "shape": [
+      480,
+      640,
+      4
+    ],
+    "dtype": "uint8",
+    "min": 68.0,
+    "max": 255.0
+  },
+  "distance_to_image_plane": {
+    "shape": [
+      480,
+      640
+    ],
+    "dtype": "float32",
+    "min": 1.3262876272201538,
+    "max": 7.012300491333008,
+    "unique_count": 2491
+  },
+  "distance_to_camera": {
+    "shape": [
+      480,
+      640
+    ],
+    "dtype": "float32",
+    "min": 1.34250009059906,
+    "max": 7.248056411743164,
+    "unique_count": 161412
+  },
+  "instance_segmentation": {
+    "shape": [
+      480,
+      640
+    ],
+    "dtype": "uint32",
+    "min": 1.0,
+    "max": 2.0,
+    "unique_count": 2,
+    "info": {
+      "idToLabels": "{'0': 'BACKGROUND', '1': 'UNLABELLED', '2': '/World/target_cube'}",
+      "idToSemantics": "{'0': {'class': 'BACKGROUND'}, '1': {'class': 'UNLABELLED'}, '2': {'class': 'cube,target_cube,target_object'}}"
+    }
+  },
+  "instance_id_segmentation": {
+    "shape": [
+      480,
+      640
+    ],
+    "dtype": "uint32",
+    "min": 2.0,
+    "max": 4.0,
+    "unique_count": 3,
+    "info": {
+      "idToLabels": "{'1': 'INVALID', '3': '/World/Table', '2': '/World/target_cube', '4': '/World/defaultGroundPlane/Environment/Geometry'}"
+    }
+  },
+  "semantic_segmentation": {
+    "shape": [
+      480,
+      640
+    ],
+    "dtype": "uint32",
+    "min": 1.0,
+    "max": 2.0,
+    "unique_count": 2,
+    "info": {
+      "idToLabels": "{'0': {'class': 'BACKGROUND'}, '1': {'class': 'UNLABELLED'}, '2': {'class': 'cube,target_cube,target_object'}}"
+    }
+  },
+  "bounding_box_2d_tight": {
+    "shape": [
+      1
+    ],
+    "dtype": "[('semanticId', '<u4'), ('x_min', '<i4'), ('y_min', '<i4'), ('x_max', '<i4'), ('y_max', '<i4'), ('occlusionRatio', '<f4')]",
+    "info": {
+      "bboxIds": "[0]",
+      "idToLabels": "{'0': {'class': 'cube,target_cube,target_object'}}",
+      "primPaths": "['/World/target_cube']"
+    }
+  }
+}

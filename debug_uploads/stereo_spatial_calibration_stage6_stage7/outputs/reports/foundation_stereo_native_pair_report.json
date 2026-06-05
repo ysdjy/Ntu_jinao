@@ -1,0 +1,21 @@
+{
+  "status": "checkpoint_missing",
+  "sample_dir": "/home1/banghai/IsaacLab/source/standalone/stereo_spatial_calibration/outputs/foundation_stereo_native_pair_dataset/cube_000001",
+  "checkpoint_status": {
+    "repo_path": "/home1/banghai/IsaacLab/third_party/FoundationStereo",
+    "checkpoint_path": null,
+    "expected_checkpoint_path": "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
+    "expected_cfg_path": "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/cfg.yaml",
+    "checkpoint_exists": false,
+    "checkpoint_cfg_exists": false,
+    "torch_available": true,
+    "ready": false,
+    "expected_checkpoint_paths": [
+      "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
+      "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/11-33-40/model_best_bp2.pth"
+    ],
+    "download_hint": "Download a FoundationStereo model folder such as 23-51-11 from the official README link and place it under third_party/FoundationStereo/pretrained_models/23-51-11/ with model_best_bp2.pth and cfg.yaml.",
+    "fallback_command": "TERM=xterm ./isaaclab.sh -p source/standalone/stereo_spatial_calibration/scripts/run_full_pipeline.py --backend synthetic --depth_source gt"
+  },
+  "hint": "Place model_best_bp2.pth and cfg.yaml under third_party/FoundationStereo/pretrained_models/23-51-11/."
+}

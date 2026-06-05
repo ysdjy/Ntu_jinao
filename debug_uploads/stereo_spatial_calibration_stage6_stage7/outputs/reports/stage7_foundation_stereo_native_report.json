@@ -1,0 +1,82 @@
+[
+  {
+    "sample_id": "cube_000001",
+    "object_type": "cube",
+    "backend": "isaac_native",
+    "native_capture_method": "camera_class",
+    "mask_source": "native_instance",
+    "segmentation_available": true,
+    "semantic_label_set_success": true,
+    "target_instance_id": 2,
+    "depth_source": "gt_depth",
+    "requested_depth_source": "gt",
+    "method": "pointcloud_median",
+    "center_camera_raw_m": [
+      0.03643251582980156,
+      -0.053373485803604126,
+      2.2054991722106934
+    ],
+    "native_surface_center_correction_z_m": 0.04,
+    "center_camera_m": [
+      0.03643251582980156,
+      -0.053373485803604126,
+      2.2454991340637207
+    ],
+    "center_world_m": [
+      0.5364325046539307,
+      0.20032638311386108,
+      0.04869195818901062
+    ],
+    "center_base_m": [
+      0.5364325046539307,
+      0.20032638311386108,
+      0.04869195818901062
+    ],
+    "center_pred_camera_m": [
+      0.03643251582980156,
+      -0.053373485803604126,
+      2.2454991340637207
+    ],
+    "center_pred_world_m": [
+      0.5364325046539307,
+      0.20032638311386108,
+      0.04869195818901062
+    ],
+    "center_pred_base_m": [
+      0.5364325046539307,
+      0.20032638311386108,
+      0.04869195818901062
+    ],
+    "gt_center_world_m": [
+      0.5375286340713501,
+      0.19860689342021942,
+      0.03999999910593033
+    ],
+    "gt_center_base_m": [
+      0.5375286340713501,
+      0.19860689342021942,
+      0.03999999910593033
+    ],
+    "center_gt_world_m": [
+      0.5375286340713501,
+      0.19860689342021942,
+      0.03999999910593033
+    ],
+    "error_x_m": -0.0010961294174194336,
+    "error_y_m": 0.0017194896936416626,
+    "error_z_m": 0.008691959083080292,
+    "error_l2_m": 0.008927950635552406,
+    "error_l2_mm": 8.927950635552406,
+    "mask_point_count": 2635,
+    "center_pixel_u": 344.77642822265625,
+    "center_pixel_v": 203.70263671875,
+    "foundation_stereo_runtime_ms": 0.0,
+    "checkpoint_available": false,
+    "foundation_stereo_inference_success": false,
+    "runtime_ms": 0.0,
+    "pred_depth_valid_ratio": 1.0,
+    "depth_mae_m": 0.0,
+    "depth_rmse_m": 0.0,
+    "valid_depth_ratio": 1.0
+  }
+]
