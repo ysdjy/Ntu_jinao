@@ -1,0 +1,12 @@
+[package]
+version = "0.1.0"
+title = "Stereo Spatial Calibration Demo"
+description = "Interactive single-shot stereo capture, FoundationStereo inference, and spatial localization."
+category = "Robotics"
+
+[dependencies]
+"omni.ui" = {}
+
+[[python.module]]
+name = "stereo_spatial_demo"
+
