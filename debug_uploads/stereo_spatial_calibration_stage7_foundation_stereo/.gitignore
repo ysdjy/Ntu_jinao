@@ -3,7 +3,6 @@
 *.onnx
 *.engine
 *.ckpt
-__pycache__/
 **/__pycache__/
 *.pyc
 .pytest_cache/
@@ -13,7 +12,6 @@ outputs/predictions/**
 third_party/
 *.npy
 *.npz
-
 !outputs/reports/
 !outputs/reports/*.json
 !outputs/reports/*.md

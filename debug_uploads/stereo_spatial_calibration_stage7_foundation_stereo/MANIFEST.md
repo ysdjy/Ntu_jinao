@@ -1,53 +1,51 @@
 # Stereo Spatial Calibration Stage 7 FoundationStereo Debug Package
 
 ## Purpose
-
-This package captures the Stage 7 FoundationStereo checkpoint management work: local README/layout confirmation, checkpoint detection, safe download attempt, clean-skip behavior when checkpoint is missing, native RGB pair test output, and unchanged native/synthetic fallback paths.
+Package the Isaac native stereo + native mask + true FoundationStereo integration for review without uploading checkpoints or large generated data.
 
 ## Source Project
-
 `~/IsaacLab/source/standalone/stereo_spatial_calibration`
 
-## Current Known State
-
-- pytest: 39 passed.
-- FoundationStereo repo exists at `~/IsaacLab/third_party/FoundationStereo`.
-- Local FoundationStereo README is `readme.md`.
-- Official README says model folder `23-51-11` belongs under `./pretrained_models/`.
-- `scripts/run_demo.py` defaults `--ckpt_dir` to `./pretrained_models/23-51-11/model_best_bp2.pth` and loads `cfg.yaml` from the same directory.
-- Checkpoint files are still missing.
-- `download_foundation_stereo_checkpoint.py` failed safely because the official link is a Google Drive folder and `gdown` is not installed.
-- `test_foundation_stereo_native_pair.py` clean-skips with `status=checkpoint_missing` and does not generate fake FoundationStereo depth.
-- native + GT depth + native instance mask still passes with `error_l2_mm=8.928`.
-- synthetic backend still passes with cube `0.648 mm`, cylinder `0.268 mm`, sphere `0.244 mm`.
-
-## Required Checkpoint Files
-
-```text
-~/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth
-~/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/cfg.yaml
-```
+## Current State
+- pytest: 39 passed
+- synthetic backend: passes with cube 0.648 mm, cylinder 0.268 mm, sphere 0.244 mm
+- native RGB/depth acquisition: passes
+- native instance segmentation: passes
+- native + GT depth + native instance mask: cube error_l2_mm=8.928
+- FoundationStereo repo: `~/IsaacLab/third_party/FoundationStereo`
+- FoundationStereo checkpoint: present locally but excluded from this package
+- FoundationStereo native pair test: success
+- native pair runtime_ms: 24641.77829993423
+- native pair pred_depth_valid_ratio: 1.0
+- native pair depth_rmse_m: 0.008722597733139992
+- native stereo RGB -> FoundationStereo -> native mask -> coordinate: success
+- stage7 error_l2_mm: 9.252578020095825
+- center_pred_world_m: [0.5364290475845337, 0.20272007584571838, 0.04821479320526123]
+- center_gt_world_m: [0.5375286340713501, 0.19860689342021942, 0.03999999910593033]
+- depth_rmse_m: 0.0030131845269352198
+- pred_depth_valid_ratio: 1.0
 
 ## Key Commands
-
 ```bash
 source /home1/banghai/miniconda3/etc/profile.d/conda.sh
 conda activate env_isaaclab
 cd ~/IsaacLab
-
 pytest source/standalone/stereo_spatial_calibration/tests -v
-python source/standalone/stereo_spatial_calibration/scripts/download_foundation_stereo_checkpoint.py
-
-ENABLE_CAMERAS=1 TERM=xterm ./isaaclab.sh -p   source/standalone/stereo_spatial_calibration/scripts/test_foundation_stereo_native_pair.py   --resolution 640 480   --baseline 0.10   --mask_source auto
-
-ENABLE_CAMERAS=1 TERM=xterm ./isaaclab.sh -p   source/standalone/stereo_spatial_calibration/scripts/run_full_pipeline.py   --num_samples_per_object 1   --objects cube   --resolution 640 480   --baseline 0.10   --backend isaac_native   --native_capture_method camera_class   --depth_source gt   --mask_source auto
-
-TERM=xterm ./isaaclab.sh -p   source/standalone/stereo_spatial_calibration/scripts/run_full_pipeline.py   --num_samples_per_object 1   --objects cube sphere cylinder   --resolution 640 480   --baseline 0.10   --backend synthetic   --depth_source gt
+ENABLE_CAMERAS=1 TERM=xterm ./isaaclab.sh -p source/standalone/stereo_spatial_calibration/scripts/test_foundation_stereo_native_pair.py --resolution 640 480 --baseline 0.10 --mask_source auto
+ENABLE_CAMERAS=1 TERM=xterm ./isaaclab.sh -p source/standalone/stereo_spatial_calibration/scripts/run_full_pipeline.py --num_samples_per_object 1 --objects cube --resolution 640 480 --baseline 0.10 --backend isaac_native --native_capture_method camera_class --depth_source foundation_stereo --mask_source auto
+TERM=xterm ./isaaclab.sh -p source/standalone/stereo_spatial_calibration/scripts/07_generate_visual_debug_report.py
 ```
+
+## Exclusions
+- FoundationStereo checkpoint files (`*.pth`, `*.pt`, `*.ckpt`) are excluded.
+- `outputs/predictions`, `outputs/pointclouds`, large datasets, conda envs, and Isaac Sim installation files are excluded.
+- `*.npy`/`*.npz` generated arrays are excluded from the debug upload package.
+
+## Large Files Over 20MB
+- None
 
 ## Copied Files
 
-- `.gitignore`
 - `README.md`
 - `configs/camera_stereo.yaml`
 - `configs/default.yaml`
@@ -68,7 +66,6 @@ TERM=xterm ./isaaclab.sh -p   source/standalone/stereo_spatial_calibration/scrip
 - `outputs/reports/stage6_native_segmentation_report.json`
 - `outputs/reports/stage7_foundation_stereo_native_report.csv`
 - `outputs/reports/stage7_foundation_stereo_native_report.json`
-- `outputs/reports/visual_debug_report.html`
 - `outputs/reports/visual_debug_report.md`
 - `outputs/reports/visual_debug_report_summary.json`
 - `outputs/visualizations/cube_000001_depth_error_color.png`
@@ -77,9 +74,12 @@ TERM=xterm ./isaaclab.sh -p   source/standalone/stereo_spatial_calibration/scrip
 - `outputs/visualizations/cube_000001_left_rgb_with_mask.png`
 - `outputs/visualizations/cube_000001_object_center_overlay.png`
 - `outputs/visualizations/cube_000001_pred_depth_color.png`
+- `outputs/visualizations/foundation_stereo_native_pair_depth_error.png`
+- `outputs/visualizations/foundation_stereo_native_pair_disparity.png`
 - `outputs/visualizations/foundation_stereo_native_pair_gt_depth.png`
 - `outputs/visualizations/foundation_stereo_native_pair_left_rgb.png`
 - `outputs/visualizations/foundation_stereo_native_pair_mask_overlay.png`
+- `outputs/visualizations/foundation_stereo_native_pair_pred_depth.png`
 - `outputs/visualizations/foundation_stereo_native_pair_right_rgb.png`
 - `scripts/00_check_environment.py`
 - `scripts/01_generate_isaac_stereo_dataset.py`
@@ -139,19 +139,3 @@ TERM=xterm ./isaaclab.sh -p   source/standalone/stereo_spatial_calibration/scrip
 - `tests/test_projected_mask_fallback.py`
 - `tests/test_transform_perturbation.py`
 - `tests/test_visual_report_generation.py`
-
-## Missing Expected Files
-
-- None
-
-## Excluded Large Files (>20 MB)
-
-- None found in package
-
-## Excluded Model/Engine Files
-
-- None found in package
-
-## Notes
-
-No checkpoint files, model weights, conda environments, Isaac Sim installation folders, pointclouds, predictions, or large datasets are included.

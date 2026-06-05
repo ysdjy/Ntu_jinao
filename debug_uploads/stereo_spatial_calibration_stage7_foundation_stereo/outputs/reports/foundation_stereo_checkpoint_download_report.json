@@ -1,14 +1,14 @@
 {
-  "status": "failed",
-  "source": "https://drive.google.com/drive/folders/1VhPebc_mMxWKccrv7pdQLTvXYVcLYpsf?usp=sharing",
+  "status": "already_ready",
+  "source": null,
   "official_links": {
     "23-51-11": "https://drive.google.com/drive/folders/1VhPebc_mMxWKccrv7pdQLTvXYVcLYpsf?usp=sharing",
     "11-33-40": "https://drive.google.com/drive/folders/1VhPebc_mMxWKccrv7pdQLTvXYVcLYpsf?usp=sharing"
   },
   "disk_space": {
-    "path": "/home1/banghai/IsaacLab/third_party/FoundationStereo",
-    "free_bytes": 3642682687488,
-    "free_gb": 3392.513,
+    "path": "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11",
+    "free_bytes": 3637420687360,
+    "free_gb": 3387.612,
     "total_gb": 3726.021
   },
   "checkpoint_before": {
@@ -17,13 +17,10 @@
     "model_dir": "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11",
     "ckpt_path": "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
     "cfg_path": "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/cfg.yaml",
-    "ckpt_exists": false,
-    "cfg_exists": false,
-    "checkpoint_ready": false,
-    "missing_files": [
-      "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
-      "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/cfg.yaml"
-    ],
+    "ckpt_exists": true,
+    "cfg_exists": true,
+    "checkpoint_ready": true,
+    "missing_files": [],
     "readme_path": "/home1/banghai/IsaacLab/third_party/FoundationStereo/readme.md",
     "expected": [
       "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
@@ -43,13 +40,10 @@
     "model_dir": "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11",
     "ckpt_path": "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
     "cfg_path": "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/cfg.yaml",
-    "ckpt_exists": false,
-    "cfg_exists": false,
-    "checkpoint_ready": false,
-    "missing_files": [
-      "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
-      "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/cfg.yaml"
-    ],
+    "ckpt_exists": true,
+    "cfg_exists": true,
+    "checkpoint_ready": true,
+    "missing_files": [],
     "readme_path": "/home1/banghai/IsaacLab/third_party/FoundationStereo/readme.md",
     "expected": [
       "/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
@@ -70,7 +64,7 @@
     "Place cfg.yaml at: /home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/cfg.yaml",
     "Do not commit checkpoint files to git."
   ],
-  "error": "Official checkpoint link is a Google Drive folder and gdown is not installed. Manual browser download is required.",
+  "error": "",
   "stdout_tail": "",
   "stderr_tail": ""
 }

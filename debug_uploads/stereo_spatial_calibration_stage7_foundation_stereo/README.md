@@ -181,10 +181,10 @@ Environment check:
 - CUDA: available
 - GPU: `Quadro RTX 8000`
 - `isaacsim`, `isaaclab`, `omni`, `isaacsim.simulation_app`: importable
-- `open3d`: not installed; ASCII PLY/NPY output still works
+- `open3d`: installed in `env_isaaclab` (`0.19.0`)
 - FoundationStereo repo: cloned/found at `~/IsaacLab/third_party/FoundationStereo`
-- FoundationStereo checkpoint: not found
-- Real FoundationStereo inference: not run
+- FoundationStereo checkpoint: found under `~/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/`
+- Real FoundationStereo inference: native stereo RGB pair and full coordinate pipeline both run successfully
 - Synthetic fallback GT-depth mode: complete
 
 Commands run:
@@ -215,10 +215,10 @@ TERM=xterm ./isaaclab.sh -p source/standalone/stereo_spatial_calibration/scripts
   --seed 42
 ```
 
-Test result:
+Latest test result:
 
 ```text
-23 passed
+39 passed
 ```
 
 Fallback smoke errors from the final three-object run:
@@ -946,3 +946,105 @@ ENABLE_CAMERAS=1 TERM=xterm ./isaaclab.sh -p \
 ```
 
 Do not call Franka execution from FoundationStereo coordinates until the true FoundationStereo depth result is below the target tolerance, ideally less than 10-20 mm after calibration. If it is larger, use `learned_residual_calibrator.py` or an explicit extrinsic/intrinsic recalibration pass before connecting IK or a small-brain executor.
+
+## Stage 7 Runtime Result After Checkpoint Placement
+
+The model files are now present under:
+
+```text
+~/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/
+```
+
+The downloaded checkpoint file on this machine was named `model_best_bp2-001.pth`; a local symlink was created so the official expected path resolves:
+
+```text
+model_best_bp2.pth -> model_best_bp2-001.pth
+```
+
+Additional runtime dependencies installed only into `env_isaaclab`:
+
+```text
+timm
+joblib
+open3d
+```
+
+No torch reinstall was performed, and the base conda environment was not modified. The adapter now calls `torch.load(..., weights_only=False)` for the trusted FoundationStereo checkpoint because PyTorch 2.6+ defaults to `weights_only=True`, which cannot load this official checkpoint metadata.
+
+Native stereo pair test:
+
+```bash
+ENABLE_CAMERAS=1 TERM=xterm ./isaaclab.sh -p \
+  source/standalone/stereo_spatial_calibration/scripts/test_foundation_stereo_native_pair.py \
+  --resolution 640 480 \
+  --baseline 0.10 \
+  --mask_source auto
+```
+
+Result:
+
+```text
+status=success
+checkpoint_ready=true
+inference_success=true
+runtime_ms=27496.470
+pred_depth_valid_ratio=1.0
+depth_mae_m=0.005281
+depth_rmse_m=0.008082
+depth_error_median_m=0.004467
+depth_error_p90_m=0.009939
+depth_error_p95_m=0.010931
+mask_source=native_instance
+mask_point_count=3625
+```
+
+Full native stereo RGB -> FoundationStereo depth -> native instance mask -> coordinate pipeline:
+
+```bash
+ENABLE_CAMERAS=1 TERM=xterm ./isaaclab.sh -p \
+  source/standalone/stereo_spatial_calibration/scripts/run_full_pipeline.py \
+  --num_samples_per_object 1 \
+  --objects cube \
+  --resolution 640 480 \
+  --baseline 0.10 \
+  --backend isaac_native \
+  --native_capture_method camera_class \
+  --depth_source foundation_stereo \
+  --mask_source auto
+```
+
+Result:
+
+```text
+backend=isaac_native
+native_capture_method=camera_class
+depth_source=foundation_stereo
+mask_source=native_instance
+checkpoint_ready=true
+foundation_stereo_inference_success=true
+error_l2_mm=9.253
+```
+
+Regression checks after enabling true FoundationStereo:
+
+```text
+pytest source/standalone/stereo_spatial_calibration/tests -v
+39 passed
+
+native + GT depth + native instance mask:
+cube_000001 error_l2_mm=8.928
+
+synthetic + GT depth:
+cube_000001     error_l2_mm=0.648
+cylinder_000001 error_l2_mm=0.268
+sphere_000001   error_l2_mm=0.244
+```
+
+Visual report:
+
+```text
+outputs/reports/visual_debug_report.md
+outputs/reports/visual_debug_report.html
+```
+
+FoundationStereo results above are true model outputs from native left/right RGB, not copied GT depth. GT depth remains available only as `--depth_source gt` for geometry validation and error labeling.

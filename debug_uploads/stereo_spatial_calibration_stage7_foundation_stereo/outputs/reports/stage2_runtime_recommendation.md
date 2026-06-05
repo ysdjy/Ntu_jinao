@@ -37,8 +37,8 @@ No code change to `isaaclab.sh` is required if the correct conda environment is 
 ## FoundationStereo
 
 - Repo: `/home1/banghai/IsaacLab/third_party/FoundationStereo`
-- Checkpoint: `None`
-- Checkpoint ready: `False`
+- Checkpoint: `/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth`
+- Checkpoint ready: `True`
 
 Expected checkpoint locations include:
 - `/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth`

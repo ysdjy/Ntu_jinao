@@ -8,44 +8,44 @@
     "segmentation_available": true,
     "semantic_label_set_success": true,
     "target_instance_id": 2,
-    "depth_source": "gt_depth",
-    "requested_depth_source": "gt",
+    "depth_source": "foundation_stereo_depth",
+    "requested_depth_source": "foundation_stereo",
     "method": "pointcloud_median",
     "center_camera_raw_m": [
-      0.03643251582980156,
-      -0.053373485803604126,
-      2.2054991722106934
+      0.036429036408662796,
+      -0.0534450002014637,
+      2.2079389095306396
     ],
     "native_surface_center_correction_z_m": 0.04,
     "center_camera_m": [
-      0.03643251582980156,
-      -0.053373485803604126,
-      2.2454991340637207
+      0.036429036408662796,
+      -0.0534450002014637,
+      2.247938871383667
     ],
     "center_world_m": [
-      0.5364325046539307,
-      0.20032638311386108,
-      0.04869195818901062
+      0.5364290475845337,
+      0.20272007584571838,
+      0.04821479320526123
     ],
     "center_base_m": [
-      0.5364325046539307,
-      0.20032638311386108,
-      0.04869195818901062
+      0.5364290475845337,
+      0.20272007584571838,
+      0.04821479320526123
     ],
     "center_pred_camera_m": [
-      0.03643251582980156,
-      -0.053373485803604126,
-      2.2454991340637207
+      0.036429036408662796,
+      -0.0534450002014637,
+      2.247938871383667
     ],
     "center_pred_world_m": [
-      0.5364325046539307,
-      0.20032638311386108,
-      0.04869195818901062
+      0.5364290475845337,
+      0.20272007584571838,
+      0.04821479320526123
     ],
     "center_pred_base_m": [
-      0.5364325046539307,
-      0.20032638311386108,
-      0.04869195818901062
+      0.5364290475845337,
+      0.20272007584571838,
+      0.04821479320526123
     ],
     "gt_center_world_m": [
       0.5375286340713501,
@@ -62,25 +62,25 @@
       0.19860689342021942,
       0.03999999910593033
     ],
-    "error_x_m": -0.0010961294174194336,
-    "error_y_m": 0.0017194896936416626,
-    "error_z_m": 0.008691959083080292,
-    "error_l2_m": 0.008927950635552406,
-    "error_l2_mm": 8.927950635552406,
+    "error_x_m": -0.0010995864868164062,
+    "error_y_m": 0.004113182425498962,
+    "error_z_m": 0.008214794099330902,
+    "error_l2_m": 0.009252578020095825,
+    "error_l2_mm": 9.252578020095825,
     "mask_point_count": 2635,
-    "center_pixel_u": 344.77642822265625,
-    "center_pixel_v": 203.70263671875,
-    "foundation_stereo_runtime_ms": 0.0,
-    "checkpoint_available": false,
-    "checkpoint_ready": false,
-    "foundation_stereo_inference_success": false,
-    "runtime_ms": 0.0,
+    "center_pixel_u": 344.7471618652344,
+    "center_pixel_v": 203.69345092773438,
+    "foundation_stereo_runtime_ms": 19325.39861195255,
+    "checkpoint_available": true,
+    "checkpoint_ready": true,
+    "foundation_stereo_inference_success": true,
+    "runtime_ms": 19325.39861195255,
     "pred_depth_valid_ratio": 1.0,
-    "depth_mae_m": 0.0,
-    "depth_rmse_m": 0.0,
-    "depth_error_median_m": 0.0,
-    "depth_error_p90_m": 0.0,
-    "depth_error_p95_m": 0.0,
+    "depth_mae_m": 0.002618759870529175,
+    "depth_rmse_m": 0.0030131845269352198,
+    "depth_error_median_m": 0.0027382373809814453,
+    "depth_error_p90_m": 0.004108905792236328,
+    "depth_error_p95_m": 0.004889130592346184,
     "valid_depth_ratio": 1.0
   }
 ]

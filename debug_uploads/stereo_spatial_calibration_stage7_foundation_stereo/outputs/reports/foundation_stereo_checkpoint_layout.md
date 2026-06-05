@@ -6,7 +6,7 @@
 - default_model_dir: `/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11`
 - ckpt_path: `/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth`
 - cfg_path: `/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/cfg.yaml`
-- checkpoint_ready: `False`
+- checkpoint_ready: `True`
 
 ## Confirmed From Local Repository
 
@@ -24,5 +24,4 @@
 
 ## Missing Files
 
-- `/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth`
-- `/home1/banghai/IsaacLab/third_party/FoundationStereo/pretrained_models/23-51-11/cfg.yaml`
+- None

@@ -142,7 +142,10 @@ class FoundationStereoAdapter:
             cfg.valid_iters = int(getattr(cfg, "valid_iters", 32))
             cfg.hiera = int(getattr(cfg, "hiera", 0))
             model = FoundationStereo(cfg)
-            ckpt = torch.load(str(self.checkpoint_path), map_location=device)
+            # PyTorch 2.6+ defaults torch.load(weights_only=True), but the
+            # official FoundationStereo checkpoint contains numpy scalar
+            # metadata that requires trusted full checkpoint loading.
+            ckpt = torch.load(str(self.checkpoint_path), map_location=device, weights_only=False)
             model.load_state_dict(ckpt["model"])
             model.to(device)
             model.eval()
