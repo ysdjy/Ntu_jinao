@@ -1,0 +1,13 @@
+resolution:
+  width: 640
+  height: 480
+stereo:
+  baseline_m: 0.10
+camera_pose:
+  position_world: [0.65, 0.0, 0.80]
+  look_at_world: [0.45, 0.0, 0.05]
+objects: [cube, sphere, cylinder]
+num_samples_per_object: 10
+max_depth_m: 10.0
+center_method: pointcloud_median
+

@@ -1,0 +1,22 @@
+{
+  "status": "success",
+  "sample_dir": "/home1/banghai/IsaacLab/source/standalone/stereo_spatial_calibration/outputs/foundation_stereo_native_pair_dataset/cube_000001",
+  "sample_count": 1,
+  "native_capture_method": "camera_class",
+  "mask_source": "native_instance",
+  "segmentation_available": true,
+  "semantic_label_set_success": true,
+  "target_instance_id": 2,
+  "rgb_shape": [
+    480,
+    640,
+    3
+  ],
+  "depth_shape": [
+    480,
+    640
+  ],
+  "depth_min_m": 1.3262876272201538,
+  "depth_max_m": 7.012300491333008,
+  "depth_valid_ratio": 1.0
+}

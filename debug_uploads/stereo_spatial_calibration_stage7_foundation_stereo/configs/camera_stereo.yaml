@@ -1,0 +1,13 @@
+camera_frame_convention: "OpenCV: x right, y down, z forward"
+resolution:
+  width: 640
+  height: 480
+intrinsics:
+  fx: 600.0
+  fy: 600.0
+  cx: 319.5
+  cy: 239.5
+stereo:
+  baseline_m: 0.10
+  rectified: true
+
